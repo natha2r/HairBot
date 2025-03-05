@@ -43,7 +43,7 @@ class MessageHandler {
 
   async sendWelcomeMessage(to, messageId, senderInfo) {
     const name = this.getSenderName(senderInfo);
-    const welcomeMessage = `Hola ${name}, Bienvenido a MEDPET, Tu tienda de mascotas en línea. ¿En qué puedo ayudarte hoy?`;
+    const welcomeMessage = `Hola ${name},  Bienvenido a MEDPET, tu Veterinaria de Confianza. ¿En qué puedo ayudarte hoy?`;
     await whatsappService.sendMessage(to, welcomeMessage, messageId);
   }
 
@@ -90,11 +90,13 @@ class MessageHandler {
         response =
           "Si esto es una emergencia, te invitamos a llamar a nuestra linea de atención";
         await this.sendContact(to);
+        break;
       default:
         response =
           "Lo siento, no entendí tu selección, Por Favor, elige una de las opciones del menú.";
     }
     await whatsappService.sendMessage(to, response);
+    
   }
 
   async sendMedia(to) {
