@@ -9,4 +9,6 @@ export default {
     API_VERSION: process.env.API_VERSION,
     PORT: process.env.PORT || 3000,
     BASE_URL: process.env.BASE_URL,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    OPENAI_API_KEY:process.env.OPENAI_API_KEY
 }

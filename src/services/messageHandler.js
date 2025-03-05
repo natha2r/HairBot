@@ -1,6 +1,6 @@
 import whatsappService from "./whatsappService.js";
 import appendToSheet from './googleSheetsService.js';
-import openAiService from './openAiService.js';
+import geminiService  from './geminiService.js';
 
 class MessageHandler {
   constructor() {
@@ -102,17 +102,17 @@ class MessageHandler {
     // const caption = 'Bienvenida';
     // const type = 'audio';
 
-    // const mediaUrl = 'https://s3.amazonaws.com/gndx.dev/medpet-imagen.png';
-    // const caption = '¡Esto es una Imagen!';
-    // const type = 'image';
+    const mediaUrl = 'https://s3.amazonaws.com/gndx.dev/medpet-imagen.png';
+    const caption = '¡Esto es una Imagen!';
+    const type = 'image';
 
     // const mediaUrl = 'https://s3.amazonaws.com/gndx.dev/medpet-video.mp4';
     // const caption = '¡Esto es una video!';
     // const type = 'video';
 
-    const mediaUrl = "https://s3.amazonaws.com/gndx.dev/medpet-file.pdf";
-    const caption = "¡Esto es un PDF!";
-    const type = "document";
+    // const mediaUrl = "https://s3.amazonaws.com/gndx.dev/medpet-file.pdf";
+    // const caption = "¡Esto es un PDF!";
+    // const type = "document";
 
     await whatsappService.sendMediaMessage(to, type, mediaUrl, caption);
   }
@@ -187,7 +187,7 @@ class MessageHandler {
     ];
 
     if (state.step === "question") {
-      response = await openAiService(message);
+      response = await geminiService(message);
     }
 
     delete this.assistandState[to];
