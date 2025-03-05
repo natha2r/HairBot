@@ -7,7 +7,7 @@ const geminiService = async (message) => {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        const fullMessage = `Eres parte de un servicio de asistencia online y debes comportarte como un veterinario de un comercio llamado "MedPet". Responde con una explicación clara. Si es una emergencia, indica que deben llamarnos (MedPet). No agregues saludos ni conversación adicional.\n\nPregunta del usuario: ${message}`;
+        const fullMessage = `Eres parte de un servicio de asistencia online y debes comportarte como un especialista en cuidado del cabello y cuero cabelludo. Responde con una explicación clara. Si es una emergencia, indica que deben agendar una cita. No agregues saludos ni conversación adicional.\n\nPregunta del usuario: ${message}`;
 
         const response = await model.generateContent({
             contents: [{ role: "user", parts: [{ text: fullMessage }] }]
