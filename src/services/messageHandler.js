@@ -1,36 +1,60 @@
+// MessageHandler.js
+// Manejador de mensajes para chatbot de peluquería
+
 import whatsappService from "./whatsappService.js";
-import appendToSheet from './googleSheetsService.js';
-import geminiService  from './geminiService.js';
+import appendToSheet from "./googleSheetsService.js";
+import geminiService from "./geminiService.js";
 
 class MessageHandler {
   constructor() {
     this.appointmentState = {};
-    this.assistandState = {};
+    this.consultationState = {};
   }
+
+  // --- Manejo de Mensajes Entrantes ---
 
   async handleIncomingMessage(message, senderInfo) {
     if (message?.type === "text") {
-      const incomingMessage = message.text.body.toLowerCase().trim();
-
-      if (this.isGreeting(incomingMessage)) {
-        await this.sendWelcomeMessage(message.from, message.id, senderInfo);
-        await this.sendWelcomeMenu(message.from);
-      } else if (incomingMessage === "media") {
-        await this.sendMedia(message.from);
-      } else if (this.appointmentState[message.from]) {
-        await this.handleAppointmentFlow(message.from, incomingMessage);
-      } else if (this.assistandState[message.from]) {
-        await this.handleAssistandFlow(message.from, incomingMessage);
-      } else {
-        await this.handleMenuOption(message.from, incomingMessage);
-      }
-      await whatsappService.markAsRead(message.id);
+      await this.handleTextMessage(message, senderInfo);
     } else if (message?.type === "interactive") {
-      const option = message?.interactive?.button_reply?.id;
-      await this.handleMenuOption(message.from, option);
-      await whatsappService.markAsRead(message.id);
+      await this.handleInteractiveMessage(message);
+    } else if (message?.type === "image") {
+      await this.handleImageMessage(message.from, message.image.id);
+    }
+    await whatsappService.markAsRead(message.id);
+  }
+
+  async handleTextMessage(message, senderInfo) {
+    const incomingMessage = message.text.body.toLowerCase().trim();
+    if (this.isGreeting(incomingMessage)) {
+      await this.sendWelcomeMessage(message.from, senderInfo);
+      await this.sendWelcomeMenu(message.from);
+    } else if (this.appointmentState[message.from]) {
+      await this.handleAppointmentFlow(message.from, incomingMessage);
+    } else if (this.consultationState[message.from]) {
+      await this.handleConsultationFlow(message.from, incomingMessage);
+    } else {
+      await this.handleMenuOption(message.from, incomingMessage);
     }
   }
+
+  async handleInteractiveMessage(message) {
+    const option = message?.interactive?.button_reply?.id;
+    await this.handleMenuOption(message.from, option);
+  }
+
+  async handleImageMessage(to, imageId) {
+    try {
+      const imageUrl = await whatsappService.downloadMedia(imageId);
+      const response = await geminiService.analyzeHairImage(imageUrl);
+      await whatsappService.sendMessage(to, response);
+    } catch (error) {
+      console.error("Error processing image:", error);
+      await whatsappService.sendMessage(to, "Ocurrió un error al procesar la imagen.");
+    }
+  }
+
+  // --- Saludos y Menú Principal ---
 
   isGreeting(message) {
     const greetings = ["hola", "hello", "hi", "buenas tardes"];
@@ -41,225 +65,100 @@ class MessageHandler {
     return senderInfo.profile?.name || senderInfo.wa_id;
   }
 
-  async sendWelcomeMessage(to, messageId, senderInfo) {
+  async sendWelcomeMessage(to, senderInfo) {
     const name = this.getSenderName(senderInfo);
-    const welcomeMessage = `Hola ${name},  Bienvenido a MEDPET, tu Veterinaria de Confianza. ¿En qué puedo ayudarte hoy?`;
-    await whatsappService.sendMessage(to, welcomeMessage, messageId);
+    const welcomeMessage = `Hola ${name}, Bienvenido a ESTILO PERFECTO, tu peluquería de confianza. ¿En qué puedo ayudarte hoy?`;
+    await whatsappService.sendMessage(to, welcomeMessage);
   }
 
   async sendWelcomeMenu(to) {
     const menuMessage = "Elige una Opción";
     const buttons = [
-      {
-        type: "reply",
-        reply: { id: "option_1", title: "Agendar" },
-      },
-      {
-        type: "reply",
-        reply: { id: "option_2", title: "Consultar" },
-      },
-      {
-        type: "reply",
-        reply: { id: "option_3", title: "Ubicación" },
-      },
+      { type: "reply", reply: { id: "option_1", title: "Consulta capilar" } },
+      { type: "reply", reply: { id: "option_2", title: "Reservar cita" } },
+      { type: "reply", reply: { id: "option_3", title: "Contaco y ubicación" } },
     ];
-
     await whatsappService.sendInteractiveButtons(to, menuMessage, buttons);
   }
 
-  waiting = (delay, callback) => {
-    setTimeout(callback, delay);
-  };
+  // --- Manejo de Opciones del Menú ---
 
   async handleMenuOption(to, option) {
     let response;
     switch (option) {
-      case "option_1":
+      case "option_2":
         this.appointmentState[to] = { step: "name" };
         response = "Por favor, ingresa tu nombre:";
         break;
-      case "option_2":
-        this.assistandState[to] = { step: "question" };
-        response = "Realiza tu consulta";
+      case "option_1":
+        this.consultationState[to] = { step: "image" };
+        response = "Por favor, envía una foto clara de tu cabello para que pueda analizarlo.";
         break;
       case "option_3":
-        response = "Te esperamos en nuestra sucursal.";
+        response = "Nos encontramos en Av. Belleza 123, Ciudad.";
         await this.sendLocation(to);
         break;
-      case "option_6":
-        response =
-          "Si esto es una emergencia, te invitamos a llamar a nuestra linea de atención";
+      case "option_4":
+        response = "Si tienes una emergencia capilar, contáctanos al +1234567890.";
         await this.sendContact(to);
         break;
       default:
-        response =
-          "Lo siento, no entendí tu selección, Por Favor, elige una de las opciones del menú.";
+        response = "Lo siento, no entendí tu selección. Elige una opción válida.";
     }
     await whatsappService.sendMessage(to, response);
-    
   }
 
-  async sendMedia(to) {
-    // const mediaUrl = 'https://s3.amazonaws.com/gndx.dev/medpet-audio.aac';
-    // const caption = 'Bienvenida';
-    // const type = 'audio';
-
-    const mediaUrl = 'https://s3.amazonaws.com/gndx.dev/medpet-imagen.png';
-    const caption = '¡Esto es una Imagen!';
-    const type = 'image';
-
-    // const mediaUrl = 'https://s3.amazonaws.com/gndx.dev/medpet-video.mp4';
-    // const caption = '¡Esto es una video!';
-    // const type = 'video';
-
-    // const mediaUrl = "https://s3.amazonaws.com/gndx.dev/medpet-file.pdf";
-    // const caption = "¡Esto es un PDF!";
-    // const type = "document";
-
-    await whatsappService.sendMediaMessage(to, type, mediaUrl, caption);
-  }
-
-  completeAppointment(to) {
-    const appointment = this.appointmentState[to];
-    delete this.appointmentState[to];
-
-    const userData = [
-      to,
-      appointment.name,
-      appointment.petName,
-      appointment.petType,
-      appointment.reason,
-      new Date().toISOString(),
-    ];
-
-    appendToSheet(userData);
-
-    return `Gracias por agendar tu cita. 
-    Resumen de tu cita:
-    
-    Nombre: ${appointment.name}
-    Nombre de la mascota: ${appointment.petName}
-    Tipo de mascota: ${appointment.petType}
-    Motivo: ${appointment.reason}
-    
-    Nos pondremos en contacto contigo pronto para confirmar la fecha y hora de tu cita.`;
-  }
+  // --- Flujo de Agendar Cita ---
 
   async handleAppointmentFlow(to, message) {
     const state = this.appointmentState[to];
     let response;
-
     switch (state.step) {
       case "name":
         state.name = message;
-        state.step = "petName";
-        response = "Gracias, Ahora, ¿Cuál es el nombre de tu Mascota?";
+        state.step = "service";
+        response = "¿Qué servicio deseas? (Corte, Tinte, Tratamiento, etc.)";
         break;
-      case "petName":
-        state.petName = message;
-        state.step = "petType";
-        response =
-          "¿Qué tipo de mascota es? (por ejemplo: perro, gato, huron, etc.)";
-        break;
-      case "petType":
-        state.petType = message;
-        state.step = "reason";
-        response = "¿Cuál es el motivo de la Consulta?";
-        break;
-      case "reason":
-        state.reason = message;
+      case "service":
+        state.service = message;
         response = this.completeAppointment(to);
         break;
     }
     await whatsappService.sendMessage(to, response);
   }
 
-  async handleAssistandFlow(to, message) {
-    const state = this.assistandState[to];
-    let response;
-
-    const menuMessage = "¿La respuesta fue de tu ayuda?";
-    const buttons = [
-      { type: "reply", reply: { id: "option_4", title: "Si, Gracias" } },
-      {
-        type: "reply",
-        reply: { id: "option_5", title: "Hacer otra pregunta" },
-      },
-      { type: "reply", reply: { id: "option_6", title: "Emergencia" } },
+  completeAppointment(to) {
+    const appointment = this.appointmentState[to];
+    delete this.appointmentState[to];
+    const userData = [
+      to,
+      appointment.name,
+      appointment.service,
+      new Date().toISOString(),
     ];
-
-    if (state.step === "question") {
-      response = await geminiService(message);
-    }
-
-    delete this.assistandState[to];
-    await whatsappService.sendMessage(to, response);
-    await whatsappService.sendInteractiveButtons(to, menuMessage, buttons);
+    appendToSheet(userData);
+    return `Tu cita ha sido registrada.\nNombre: ${appointment.name}\nServicio: ${appointment.service}\nNos pondremos en contacto para confirmar la fecha y hora.`;
   }
 
-  async sendContact(to) {
-    const contact = {
-      addresses: [
-        {
-          street: "123 Calle de las Mascotas",
-          city: "Ciudad",
-          state: "Estado",
-          zip: "12345",
-          country: "País",
-          country_code: "PA",
-          type: "WORK",
-        },
-      ],
-      emails: [
-        {
-          email: "contacto@medpet.com",
-          type: "WORK",
-        },
-      ],
-      name: {
-        formatted_name: "MedPet Contacto",
-        first_name: "MedPet",
-        last_name: "Contacto",
-        middle_name: "",
-        suffix: "",
-        prefix: "",
-      },
-      org: {
-        company: "MedPet",
-        department: "Atención al Cliente",
-        title: "Representante",
-      },
-      phones: [
-        {
-          phone: "+1234567890",
-          wa_id: "1234567890",
-          type: "WORK",
-        },
-      ],
-      urls: [
-        {
-          url: "https://www.medpet.com",
-          type: "WORK",
-        },
-      ],
-    };
+  // --- Flujo de Consulta de Cabello ---
 
-    await whatsappService.sendContactMessage(to, contact);
+  async handleConsultationFlow(to, message) {
+    delete this.consultationState[to];
+    await whatsappService.sendMessage(to,"Por favor, envie la imagen como un mensaje aparte.");
+  }
+
+  // --- Funciones Auxiliares ---
+
+  async sendContact(to) {
+    await whatsappService.sendMessage(to, "Llámanos al +1234567890 para asistencia inmediata.");
   }
 
   async sendLocation(to) {
     const latitude = 6.2071694;
     const longitude = -75.574607;
-    const name = "Platzi Medellín";
-    const address = "Cra. 43A #5A - 113, El Poblado, Medellín, Antioquia.";
-
-    await whatsappService.sendLocationMessage(
-      to,
-      latitude,
-      longitude,
-      name,
-      address
-    );
+    const name = "Peluquería Estilo Perfecto";
+    const address = "Av. Belleza 123, Ciudad.";
+    await whatsappService.sendLocationMessage(to, latitude, longitude, name, address);
   }
 }
 
