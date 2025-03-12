@@ -1,10 +1,12 @@
-
 import sendToWhatsApp from "../services/httpRequest/sendToWhatsApp.js";
+import axios from 'axios';
+import fs from 'fs/promises';
+import path from 'path';
 
 class WhatsAppService {
   async sendMessage(to, body, messageId) {
     const data = {
-      messaging_product: 'whatsapp',
+      messaging_product: "whatsapp",
       to,
       text: { body },
     };
@@ -14,11 +16,11 @@ class WhatsAppService {
 
   async sendInteractiveButtons(to, bodyText, buttons) {
     const data = {
-      messaging_product: 'whatsapp',
+      messaging_product: "whatsapp",
       to,
-      type: 'interactive',
+      type: "interactive",
       interactive: {
-        type: 'button',
+        type: "button",
         body: { text: bodyText },
         action: {
           buttons: buttons,
@@ -33,25 +35,29 @@ class WhatsAppService {
     const mediaObject = {};
 
     switch (type) {
-      case 'image':
+      case "image":
         mediaObject.image = { link: mediaUrl, caption: caption };
         break;
-      case 'audio':
+      case "audio":
         mediaObject.audio = { link: mediaUrl };
         break;
-      case 'video':
+      case "video":
         mediaObject.video = { link: mediaUrl, caption: caption };
         break;
-      case 'document':
-        mediaObject.document = { link: mediaUrl, caption: caption, filename: 'medpet-file.pdf' };
+      case "document":
+        mediaObject.document = {
+          link: mediaUrl,
+          caption: caption,
+          filename: "medpet-file.pdf",
+        };
         break;
       default:
-        throw new Error('Not Supported Media Type');
+        throw new Error("Not Supported Media Type");
     }
 
     const data = {
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
       to,
       type: type,
       ...mediaObject,
@@ -62,8 +68,8 @@ class WhatsAppService {
 
   async markAsRead(messageId) {
     const data = {
-      messaging_product: 'whatsapp',
-      status: 'read',
+      messaging_product: "whatsapp",
+      status: "read",
       message_id: messageId,
     };
 
@@ -72,9 +78,9 @@ class WhatsAppService {
 
   async sendContactMessage(to, contact) {
     const data = {
-      messaging_product: 'whatsapp',
+      messaging_product: "whatsapp",
       to,
-      type: 'contacts',
+      type: "contacts",
       contacts: [contact],
     };
 
@@ -83,21 +89,50 @@ class WhatsAppService {
 
   async sendLocationMessage(to, latitude, longitude, name, address) {
     const data = {
-      messaging_product: 'whatsapp',
+      messaging_product: "whatsapp",
       to,
-      type: 'location',
+      type: "location",
       location: {
         latitude: latitude,
         longitude: longitude,
         name: name,
-        address: address
-      }
+        address: address,
+      },
     };
-    
     await sendToWhatsApp(data);
   }
 
+  async downloadMedia(mediaId) {
+    try {
+      const response = await axios({
+        method: "get",
+        url: `${config.BASE_URL}/${config.API_VERSION}/${mediaId}`, // Reemplaza con tu versión de la API
+        headers: {
+          Authorization: `Bearer ${process.env.API_TOKEN}`, // Asegúrate de tener tu token configurado
+        },
+      });
 
+      const mediaUrl = response.data.url;
+
+      const mediaResponse = await axios({
+        method: "get",
+        url: mediaUrl,
+        responseType: "arraybuffer", // Para manejar datos binarios (imágenes)
+        headers: {
+          Authorization: `Bearer ${process.env.API_TOKEN}`,
+        },
+      });
+
+      // Guardar la imagen en un archivo temporal
+      const tempFilePath = path.join(process.cwd(), "temp", `${mediaId}.jpg`); // Ajusta la extensión si es necesario
+      await fs.writeFile(tempFilePath, mediaResponse.data);
+
+      return tempFilePath; // Devolver la ruta del archivo
+    } catch (error) {
+      console.error("Error downloading media:", error);
+      throw error; // Re-lanza el error para que sea manejado en messageHandler.js
+    }
+  }
 }
 
 export default new WhatsAppService();
