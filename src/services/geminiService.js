@@ -1,28 +1,61 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import config from "../config/env.js";
+import fs from 'fs';
 
 const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY, { apiVersion: "v1" });
 
-const geminiService = async (message) => {
-    try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+async function fileToGenerativePart(path, mimeType) {
+    const file = await fs.promises.readFile(path);
+    const base64Encoded = Buffer.from(file).toString("base64");
+    return {
+        inlineData: { data: base64Encoded, mimeType }
+    };
+}
 
-        const fullMessage = `Eres parte de un servicio de asistencia online y debes comportarte como un especialista en cuidado del cabello y cuero cabelludo. Responde con una explicación clara. Si es una emergencia, indica que deben agendar una cita. No agregues saludos ni conversación adicional.\n\nPregunta del usuario: ${message}`;
+const geminiService = {
+    analyzeHairImage: async (imagePath, prompt = "Analiza el estado del cuero cabelludo y el cabello en esta imagen. Indica si el cuero cabelludo es seco, graso o normal, si hay signos de caspa, irritación o caída. Describe la textura del cabello (liso, ondulado, rizado), su grosor (fino, medio, grueso), y su estado general (hidratado, seco, dañado, teñido, con puntas abiertas). Brinda recomendaciones para su cuidado según el análisis.") => { 
+        try {
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        const response = await model.generateContent({
-            contents: [{ role: "user", parts: [{ text: fullMessage }] }]
-        });
+            const imageParts = await fileToGenerativePart(imagePath, "image/jpeg");
+            const parts = [
+                imageParts,
+                { text: prompt } //Se agrega el prompt como texto
+            ];
 
-        console.log("Respuesta de Gemini:", JSON.stringify(response, null, 2));
+            const result = await model.generateContent(parts);
+            const response = await result.response;
+            const text = response.candidates[0].content.parts[0].text;
+            return text;
 
-        if (!response?.response?.candidates?.length) {
-            throw new Error("La API de Gemini no devolvió una respuesta válida.");
+        } catch (error) {
+            console.error("Error en analyzeHairImage:", error);
+            return "Hubo un error al analizar la imagen del cabello.";
         }
+    },
 
-        return response.response.candidates[0]?.content?.parts?.[0]?.text || "No se recibió respuesta del modelo.";
-    } catch (error) {
-        console.error("Error en Gemini:", error);
-        return "Hubo un error con la IA.";
+    generalQuery: async (message, imagePath) => {
+        try {
+            const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+
+            let parts = [];
+
+            if (imagePath) {
+                const imageParts = await fileToGenerativePart(imagePath, "image/jpeg");
+                parts.push(imageParts);
+            }
+
+            parts.push({ text: message });
+
+            const result = await model.generateContent(parts);
+            const response = await result.response;
+            const text = response.candidates[0].content.parts[0].text;
+            return text;
+
+        } catch (error) {
+            console.error("Error en Gemini generalQuery:", error);
+            return "Hubo un error con la IA.";
+        }
     }
 };
 
