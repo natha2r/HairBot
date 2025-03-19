@@ -21,7 +21,7 @@ async function fileToGenerativePart(path, mimeType) {
 }
 
 const geminiService = {
-    analyzeHairImage: async (imagePath, prompt = "Eres un experto en cuidado capilar y salud del cuero cabelludo.") => {
+    analyzeHairImage: async (imagePath, prompt = "Eres un dermatólogo especializado en tricología (salud del cabello y cuero cabelludo). Analiza detalladamente esta imagen del cuero cabelludo. Describe cualquier condición visible como: caspa, enrojecimiento, irritación, calvicie, adelgazamiento del cabello, o anomalías en la textura del cuero cabelludo.") => {
         try {
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
             const imageParts = await fileToGenerativePart(imagePath, "image/jpeg");
@@ -36,7 +36,10 @@ const geminiService = {
         }
     },
 
-    analyzeHairImages: async (imagePath1, imagePath2, prompt = "Eres un experto en cuidado capilar y salud del cuero cabelludo. Analiza detalladamente las dos imágenes proporcionadas y realiza un diagnóstico integral del estado del cuero cabelludo y del cabello. Evalúa el cuero cabelludo determinando si es seco, graso, mixto o normal, e identifica posibles afecciones como caspa, irritación, sensibilidad, inflamación o signos de caída. Examina la fibra capilar considerando su textura (liso, ondulado, rizado o afro), su grosor (fino, medio o grueso) y su estado general (hidratado, seco, dañado, quebradizo, poroso, con frizz, con puntas abiertas o teñido).") => {
+    analyzeHairImages: async (imagePath1, imagePath2, prompt = `Actúa como un tricólogo profesional. Analiza las dos imágenes proporcionadas: una del cuero cabelludo y otra de la hebra capilar.
+                            Cuero Cabelludo: Determina el tipo de cuero cabelludo (seco, graso, mixto o normal) y evalúa la presencia de caspa, enrojecimiento, irritación, inflamación o signos de alopecia.
+                            Fibra Capilar: Describe la textura (liso, ondulado, rizado o afro), grosor (fino, medio o grueso) y estado general del cabello (hidratado, seco, dañado, quebradizo, poroso, con frizz, puntas abiertas o si está teñido).
+                            Proporciona un diagnóstico detallado y recomendaciones de tratamiento o cuidado capilar personalizadas basadas en tu análisis.`) => {
         try {
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
             const imageParts1 = await fileToGenerativePart(imagePath1, "image/jpeg");
@@ -59,7 +62,8 @@ const geminiService = {
 
             if (imagePath) {
                 const imageParts = await fileToGenerativePart(imagePath, "image/jpeg");
-                parts.push(imageParts);
+                const basePrompt = "Como un experto asesor de belleza capilar, responde a la siguiente pregunta del usuario: ";
+                parts.push({text: basePrompt + imageParts});
             }
 
             parts.push({ text: message });

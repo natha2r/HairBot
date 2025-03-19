@@ -1,14 +1,9 @@
-// MessageHandler.js
-// Manejador de mensajes para chatbot de peluquería
-
 import whatsappService from "./whatsappService.js";
-import appendToSheet from "./googleSheetsService.js";
 import geminiService from "./geminiService.js";
 import * as messages from "./messages.js";
 
 class MessageHandler {
     constructor() {
-        this.appointmentState = {};
         this.consultationState = {};
     }
 
@@ -30,8 +25,6 @@ class MessageHandler {
         if (this.isGreeting(incomingMessage)) {
             await this.sendWelcomeMessage(message.from, senderInfo);
             await this.sendWelcomeMenu(message.from);
-        } else if (this.appointmentState[message.from]) {
-            await this.handleAppointmentFlow(message.from, incomingMessage);
         } else if (this.consultationState[message.from]) {
             await this.handleConsultationFlow(message.from, incomingMessage);
         } else {
@@ -40,7 +33,20 @@ class MessageHandler {
     }
 
     async handleInteractiveMessage(message) {
+        if (message?.interactive?.button_reply) {
+            await this.handleInteractiveButtonMessage(message);
+        } else if (message?.interactive?.list_reply) {
+            await this.handleInteractiveListMessage(message);
+        }
+    }
+
+    async handleInteractiveButtonMessage(message) {
         const option = message?.interactive?.button_reply?.id;
+        await this.handleMenuOption(message.from, option);
+    }
+
+    async handleInteractiveListMessage(message) {
+        const option = message?.interactive?.list_reply?.id;
         await this.handleMenuOption(message.from, option);
     }
 
@@ -48,11 +54,11 @@ class MessageHandler {
         try {
             const photo1Path = await whatsappService.downloadMedia(photo1Id);
             const photo2Path = await whatsappService.downloadMedia(photo2Id);
-    
+
             if (!photo1Path || !photo2Path) {
-                throw new Error("Failed to download one or both images.");
+                throw new Error("No se pudo descargar una o ambas imágenes.");
             }
-    
+
             // Usando analyzeHairImages para el análisis preliminar (corto)
             const preliminaryResponse = await geminiService.analyzeHairImages(
                 photo1Path,
@@ -62,7 +68,7 @@ class MessageHandler {
             await whatsappService.sendMessage(to, preliminaryResponse);
             await this.offerFullAnalysis(to);
         } catch (error) {
-            console.error("Error analyzing images:", error);
+            console.error("Error analisando imagenes:", error);
             await whatsappService.sendMessage(
                 to,
                 "Ocurrió un error al analizar las imágenes."
@@ -70,10 +76,10 @@ class MessageHandler {
         }
     }
 
-    // Botones después del análsiis corto
+    // Botones después del análisis corto
     async offerFullAnalysis(to) {
         const message =
-            "¿Deseas un análisis completo y detallado por correo electrónico? (Costo: $50.000)";
+            "¿Deseas un análisis completo y detallado? Costo: $50.000";
         const buttons = [
             { type: "reply", reply: { id: "full_analysis_yes", title: "Sí" } },
             { type: "reply", reply: { id: "full_analysis_no", title: "No" } },
@@ -81,18 +87,23 @@ class MessageHandler {
         await whatsappService.sendInteractiveButtons(to, message, buttons);
     }
 
-
     async handleImageMessage(to, imageId) {
         try {
             const state = this.consultationState[to];
+            const baseUrl = 'https://8spn764p-3000.use2.devtunnels.ms/images/';
 
             if (state && state.step === "photo1") {
                 state.photo1Id = imageId;
                 state.step = "photo2";
-                await whatsappService.sendMessage(to, messages.PRIMERA_FOTO_MESSAGE);
+                const imageUrl = baseUrl + 'foto_espalda.jpg';
+                await whatsappService.sendMediaMessage(
+                    to,
+                    "image",
+                    imageUrl,
+                    messages.SEGUNDA_FOTO_MESSAGE);
             } else if (state && state.step === "photo2") {
                 state.photo2Id = imageId;
-                await whatsappService.sendMessage(to, messages.SEGUNDA_FOTO_MESSAGE);
+                await whatsappService.sendMessage(to, messages.ANALISIS_MESSAGE);
                 await this.preliminaryAnalysis(to, state.photo1Id, state.photo2Id);
                 //delete this.consultationState[to]; // Eliminar el estado luego del analisis preliminar
             } else {
@@ -104,9 +115,6 @@ class MessageHandler {
         }
     }
 
-    
-    
-    
     // --- Saludos y Menú Principal ---
 
     isGreeting(message) {
@@ -176,24 +184,29 @@ class MessageHandler {
 
     //Opciones de Bienvenida
     async sendWelcomeMenu(to) {
-        const menuMessage = "Elige una Opción";
-        const buttons =
-            [
-                { type: "reply", reply: { id: "option_1", title: "✨Diagnostico capilar" }, },
-                { type: "reply", reply: { id: "option_2", title: "Cita con Profesional" }, },
-                { type: "reply", reply: { id: "option_3", title: "Ver Productos" } },
-            ];
+        const sections = [
+            {
+                title: "Opciones Principales",
+                rows: [
+                    { id: "diagnostico", title: "Diagnóstico Capilar" },
+                    { id: "cita", title: "Cita con Profesional" },
+                    { id: "productos", title: "Ver Productos" },
+                    { id: "ubicacion", title: "Ubicación" },
+                ],
+            },
+        ];
 
-        await whatsappService.sendInteractiveButtons(to, menuMessage, buttons);
+        await whatsappService.sendInteractiveList(
+            to,
+            "Selecciona una opción:",
+            "Menú",
+            sections
+        );
     }
 
     async sendConsultationOptions(to) {
         try {
             const buttons = [
-                {
-                    type: "reply",
-                    reply: { id: "option_book_appointment", title: "Reservar Cita" },
-                },
                 {
                     type: "reply",
                     reply: { id: "option_more_info", title: "Más Información" },
@@ -227,9 +240,11 @@ class MessageHandler {
             const photo1Path = await whatsappService.downloadMedia(state.photo1Id);
             const photo2Path = await whatsappService.downloadMedia(state.photo2Id);
 
-            const fullResponse = await geminiService.fullHairAnalysis(
+            // Usando analyzeHairImages para el análisis completo (detallado)
+            const fullResponse = await geminiService.analyzeHairImages(
                 photo1Path,
-                photo2Path
+                photo2Path,
+                "Eres un experto en cuidado capilar y salud del cuero cabelludo. Analiza detalladamente las dos imágenes proporcionadas y realiza un diagnóstico integral del estado del cuero cabelludo y del cabello. Evalúa el cuero cabelludo determinando si es seco, graso, mixto o normal, e identifica posibles afecciones como caspa, irritación, sensibilidad, inflamación o signos de caída. Examina la fibra capilar considerando su textura (liso, ondulado, rizado o afro), su grosor (fino, medio o grueso) y su estado general (hidratado, seco, dañado, quebradizo, poroso, con frizz, con puntas abiertas o teñido)."
             );
             await emailService.sendEmail(
                 userEmail,
@@ -253,6 +268,9 @@ class MessageHandler {
     // --- Manejo de Opciones del Menú ---
 
     async handleMenuOption(to, option) {
+        console.log("handleMenuOption called with:", { to, option });
+
+        const baseUrl = 'https://8spn764p-3000.use2.devtunnels.ms/images/';
         let response;
         switch (option) {
             case "full_analysis_yes":
@@ -261,61 +279,76 @@ class MessageHandler {
             case "full_analysis_no":
                 await whatsappService.sendMessage(to, "¡Gracias por tu consulta!");
                 return; // Importante: salir de la función
-            case "option_1":
+            case "diagnostico":
+                const imageUrl = baseUrl + 'foto_cuero_cabelludo.jpg';
                 this.consultationState[to] = { step: "photo1" };
-                response =
-                    " ¡Comencemos con tu consulta capilar! Para brindarte un análisis preciso, envía una foto clara de tu cuero cabelludo con buena iluminación. ✨";
-                break;
-            case "option_2":
+                try {
+                    await whatsappService.sendMediaMessage(
+                        to,
+                        "image",
+                        imageUrl,
+                        messages.PRIMERA_FOTO_MESSAGE
+                    );
+                } catch (error) {
+                    console.error("Error sending media message:", error);
+                    await whatsappService.sendMessage(to, "Ocurrió un error al enviar la imagen de ejemplo.");
+                }
+                return;
+            case "cita":
                 await whatsappService.sendMessage(to, messages.AGENDA_MESSAGE); // Primero, enviar el mensaje
                 await this.sendContact(to); // Luego, enviar el contacto
                 return;
-            case "option_3":
-                response = "Nos encontramos en Av. Belleza 123, Ciudad.";
-                await this.sendLocation(to);
+            case "productos":
+                await whatsappService.sendMessage(to, messages.PRODUCTOS_MESSAGE); // Llama a la función para mostrar productos
+                await whatsappService.sendInteractiveButtons(
+                    to,
+                    "¿Necesitas ayuda adicional?",
+                    [
+                        { type: "reply", reply: { id: "terminar", title: "No, gracias" } },
+                        { type: "reply", reply: { id: "menu", title: "Menú principal" } },
+                    ]
+                );
                 break;
-            case "option_4":
-                response =
-                    "Si tienes una emergencia capilar, contáctanos al +1234567890.";
-                await this.sendContact(to);
+            case "ubicacion":
+                const latitude = 7.114296;
+                const longitude = -73.112385;
+                const name = "Alpelo Peluquería";
+                const address = "📌 Cra. 31 #50 - 21, Sotomayor, Bucaramanga, Santander";
+
+                await whatsappService.sendLocationMessage(
+                    to,
+                    latitude,
+                    longitude,
+                    name,
+                    address
+                );
+
+                await whatsappService.sendMessage(to, messages.HORARIOS_MESSAGE);
+                await whatsappService.sendInteractiveButtons(
+                    to,
+                    "¿Necesitas ayuda adicional?",
+                    [
+                        { type: "reply", reply: { id: "terminar", title: "No, gracias" } },
+                        { type: "reply", reply: { id: "menu", title: "Menú principal" } },
+                    ]
+                );
                 break;
+
+            case "terminar":
+                await whatsappService.sendMessage(to, "¡Gracias por contactarnos! ¡Esperamos verte pronto!");
+                break;
+
+            case "menu":
+                await this.sendWelcomeMenu(to); // Reenvía el menú principal
+                break;
+
             default:
                 response =
                     "Lo siento, no entendí tu selección. Elige una opción válida.";
+                await whatsappService.sendMessage(to, response);
         }
-        await whatsappService.sendMessage(to, response);
-    }
 
-    // --- Flujo de Agendar Cita ---
-
-    async handleAppointmentFlow(to, message) {
-        const state = this.appointmentState[to];
-        let response;
-        switch (state.step) {
-            case "name":
-                state.name = message;
-                state.step = "service";
-                response = "¿Qué servicio deseas? (Corte, Tinte, Tratamiento, etc.)";
-                break;
-            case "service":
-                state.service = message;
-                response = this.completeAppointment(to);
-                break;
-        }
-        await whatsappService.sendMessage(to, response);
-    }
-
-    completeAppointment(to) {
-        const appointment = this.appointmentState[to];
-        delete this.appointmentState[to];
-        const userData = [
-            to,
-            appointment.name,
-            appointment.service,
-            new Date().toISOString(),
-        ];
-        appendToSheet(userData);
-        return `Tu cita ha sido registrada.\nNombre: ${appointment.name}\nServicio: ${appointment.service}\nNos pondremos en contacto para confirmar la fecha y hora.`;
+        console.log("Sending message with response:", response);
     }
 
     // --- Flujo de Consulta de Cabello ---
@@ -344,7 +377,7 @@ class MessageHandler {
             await whatsappService.sendMessage(to, response);
             await this.sendConsultationOptions(to);
         } catch (error) {
-            console.error("Error analyzing images:", error);
+            console.error("Error analisando imagenes:", error);
             await whatsappService.sendMessage(
                 to,
                 "Ocurrió un error al analizar las imágenes."
@@ -367,6 +400,8 @@ class MessageHandler {
             address
         );
     }
+
+
 }
 
 export default new MessageHandler();

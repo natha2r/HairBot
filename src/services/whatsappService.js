@@ -104,6 +104,31 @@ class WhatsAppService {
         await sendToWhatsApp(data);
     }
 
+    async sendInteractiveList(to, bodyText, buttonText, sections) {
+        try {
+            const message = {
+                messaging_product: "whatsapp",
+                to: to,
+                type: "interactive",
+                interactive: {
+                    type: "list",
+                    body: {
+                        text: bodyText,
+                    },
+                    action: {
+                        button: buttonText,
+                        sections: sections,
+                    },
+                },
+            };
+
+            await sendToWhatsApp(message);
+        } catch (error) {
+            console.error("Error sending interactive list:", error);
+            throw error;
+        }
+    }
+
     async downloadMedia(mediaId) {
         try {
             const baseUrl = process.env.BASE_URL;
