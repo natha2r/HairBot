@@ -10,6 +10,8 @@ export default {
     PORT: process.env.PORT || 3000,
     BASE_URL: process.env.BASE_URL,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-    OPENAI_API_KEY:process.env.OPENAI_API_KEY,
-    BOLD_API_KEY:process.env.BOLD_API_KEY
+    BOLD_API_KEY:process.env.BOLD_API_KEY,
+    WEBHOOK_BOLD:process.env.WEBHOOK_BOLD,
+    PAGO_BOLD:process.env.PAGO_BOLD,
+    BOLD_API_LINK_URL: process.env.BOLD_API_LINK_URL
 }
