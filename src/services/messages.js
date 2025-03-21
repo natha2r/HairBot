@@ -15,7 +15,7 @@ export const ERROR_IMAGE_MESSAGE = "⚠️ Ocurrió un error al procesar la imag
 
 export const AGENDA_MESSAGE = "Para agendar tu cita con Claudia Moreno, por favor comunícate con el número de contacto. ¡Estaremos encantados de atenderte y coordinar tu cita en el horario que mejor te convenga! ✂️✨"
 
-export const PAGO_MESSAGE = "Para realizar el pago";
+export const PAGO_MESSAGE = "💳 ¡Todo listo para el siguiente paso! Completa tu pago en el siguiente enlace: https://checkout.bold.co/payment/LNK_UR44F1FKLM\n\n💰✨Una vez confirmado el pago, recibirás tu análisis capilar detallado directamente en tu correo. 📩💆‍♀️ ¡Gracias por confiar en nosotros!";
 
 export const HORARIOS_MESSAGE = "🕒 Nuestros horarios: \n\n"+
                             "- Lunes a Viernes: 8:00 AM - 8:00 PM\n"+
