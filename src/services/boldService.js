@@ -2,6 +2,7 @@ import axios from "axios";
 import config from "../config/env.js";
 import messageHandler from "./messageHandler.js";
 import whatsappService from "./whatsappService.js";
+import stateManager from './stateManager.js';
 
 class BoldService {
     constructor() {
@@ -54,49 +55,61 @@ class BoldService {
         }
     }
 
+    // En processWebhookEvent
     async processWebhookEvent(event) {
         try {
             console.log('Evento recibido:', JSON.stringify(event, null, 2));
-
+    
             if (event.type === 'SALE_APPROVED') {
                 const paymentId = event.data?.payment_id;
-                const paymentLinkId = event.data?.metadata?.reference; // Extraer el paymentLinkId
-                console.log(`paymentLinkId recibido: ${paymentLinkId}`);
-
-                console.log('consultationState antes de findUser:', messageHandler.consultationState); // Agrega este log
-
+                const paymentLinkId = event.data?.metadata?.reference;
+    
                 if (!paymentLinkId) {
                     throw new Error('No se pudo extraer el paymentLinkId del evento.');
                 }
-
-                console.log(`paymentLinkId recibido: ${paymentLinkId}`);
-
+    
                 const phoneNumber = this.findUserByPaymentLinkId(paymentLinkId);
-
+    
                 if (!phoneNumber) {
                     console.warn('⚠️ No se encontró número de teléfono vinculado a este pago.');
                     return;
                 }
-
+    
                 console.log(`✅ Pago aprobado para ${phoneNumber}, ID: ${paymentId}`);
-                console.log(`🔄 Procesando análisis para ${phoneNumber}...`);
+    
+                const state = stateManager.getState(phoneNumber);
+                if (state) {
+                    state.paymentStatus = 'verified'; // Marcar el pago como verificado
 
-                if (messageHandler.consultationState[phoneNumber]) {
-                    messageHandler.consultationState[phoneNumber].paymentStatus = 'verified';
+                    // Verificar si las imágenes ya están listas
+                    if (state.photo1Id && state.photo2Id) {
+                        await messageHandler.processAnalysisAndSendResults(phoneNumber);
+                    } else {
+                        console.log(`⏳ Esperando imágenes para ${phoneNumber} antes de procesar el análisis.`);
+                    }
                 }
-
-                await messageHandler.processAnalysisAndSendResults(phoneNumber);
-                await whatsappService.sendMessage(phoneNumber, '✅ Pago recibido. Se ha enviado tu análisis completo.');
             }
         } catch (error) {
             console.error('❌ Error en processWebhookEvent:', error);
         }
     }
 
+    // findUserByPaymentLinkId(paymentLinkId) {
+    //     // Lógica para encontrar el número de teléfono asociado al paymentLinkId
+    //     // (puedes usar un mapa o una base de datos)
+    //     for (const phoneNumber in stateManager.consultationState) {
+    //         const state = stateManager.consultationState[phoneNumber];
+    //         if (state.paymentLinkId === paymentLinkId) {
+    //             return phoneNumber;
+    //         }
+    //     }
+    //     return null;
+    // }
+
     findUserByPaymentLinkId(paymentLinkId) {
         console.log(`🔎 Buscando phoneNumber para paymentLinkId: ${paymentLinkId}`);
         console.log('📋 Estado actual de consultationState:', messageHandler.consultationState);
-    
+
         for (const phoneNumber in messageHandler.consultationState) {
             console.log(`🔍 Verificando phoneNumber: ${phoneNumber}`);
             if (messageHandler.consultationState[phoneNumber] && messageHandler.consultationState[phoneNumber].paymentLinkId === paymentLinkId && phoneNumber !== 'undefined') {

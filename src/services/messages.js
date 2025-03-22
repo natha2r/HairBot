@@ -24,3 +24,6 @@ export const HORARIOS_MESSAGE = "🕒 Nuestros horarios: \n\n"+
                             "¡Te esperamos para consentirte y renovar tu estilo! ✨💆‍♀️";
 
 export const PRODUCTOS_MESSAGE = "Descubre nuestra increíble variedad de productos visitando nuestra página web claudiamoreno.webnode.com.co. ¡No te pierdas lo que tenemos para ti! Explora, elige y encuentra justo lo que necesitas. 😊";
+
+
+export const PAGO_CONFIRMADO = "✅ Pago recibido. Se ha enviado tu análisis completo. ¡Gracias por confiar en nosotros! 💆‍♀️✨";
