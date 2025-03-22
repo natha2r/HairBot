@@ -21,25 +21,32 @@ async function fileToGenerativePart(path, mimeType) {
 }
 
 const geminiService = {
-    analyzeHairImage: async (imagePath, prompt = "Eres un dermatólogo especializado en tricología (salud del cabello y cuero cabelludo). Analiza detalladamente esta imagen del cuero cabelludo. Describe cualquier condición visible como: caspa, enrojecimiento, irritación, calvicie, adelgazamiento del cabello, o anomalías en la textura del cuero cabelludo.") => {
-        try {
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-            const imageParts = await fileToGenerativePart(imagePath, "image/jpeg");
-            const parts = [imageParts, { text: prompt }];
-            const result = await model.generateContent(parts);
-            const response = await result.response;
-            const text = response.candidates[0].content.parts[0].text;
-            return text;
-        } catch (error) {
-            console.error("Error en analyzeHairImage:", error);
-            return "Hubo un error al analizar la imagen del cabello.";
-        }
-    },
 
-    analyzeHairImages: async (imagePath1, imagePath2, prompt = `Actúa como un tricólogo profesional. Analiza las dos imágenes proporcionadas: una del cuero cabelludo y otra de la hebra capilar.
-                            Cuero Cabelludo: Determina el tipo de cuero cabelludo (seco, graso, mixto o normal) y evalúa la presencia de caspa, enrojecimiento, irritación, inflamación o signos de alopecia.
-                            Fibra Capilar: Describe la textura (liso, ondulado, rizado o afro), grosor (fino, medio o grueso) y estado general del cabello (hidratado, seco, dañado, quebradizo, poroso, con frizz, puntas abiertas o si está teñido).
-                            Proporciona un diagnóstico detallado y recomendaciones de tratamiento o cuidado capilar personalizadas basadas en tu análisis.`) => {
+    analyzeHairImages: async (imagePath1, imagePath2, prompt = `
+                Actúa como un tricólogo profesional con más de 20 años de experiencia en el diagnóstico y tratamiento de problemas capilares.
+                Analiza las dos imágenes proporcionadas: una del cuero cabelludo y otra de la hebra capilar.
+
+                **Análisis del cuero cabelludo:**
+                - Determina el tipo de cuero cabelludo (seco, graso, mixto o normal).
+                - Evalúa la presencia de condiciones como caspa, enrojecimiento, irritación, inflamación o signos de alopecia.
+                - Describe cualquier anomalía visible en la textura o color del cuero cabelludo.
+
+                **Análisis de la hebra capilar:**
+                - Describe la textura del cabello (liso, ondulado, rizado o afro).
+                - Evalúa el grosor del cabello (fino, medio o grueso).
+                - Determina el estado general del cabello (hidratado, seco, dañado, quebradizo, poroso, con frizz, puntas abiertas o si está teñido).
+                - Identifica cualquier daño visible en la cutícula del cabello.
+
+                **Formato de la respuesta:**
+                - **Condición del cuero cabelludo:** [Descripción detallada].
+                - **Estado del cabello:** [Descripción detallada].
+                - **Recomendaciones:** [Lista de recomendaciones personalizadas para el cuidado capilar].
+
+                **Ejemplo de respuesta esperada:**
+                - **Condición del cuero cabelludo:** [Ejemplo de diagnóstico].
+                - **Estado del cabello:** [Ejemplo de diagnóstico].
+                - **Recomendaciones:** [Ejemplo de recomendaciones].
+                `) => {
         try {
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
             const imageParts1 = await fileToGenerativePart(imagePath1, "image/jpeg");
@@ -62,8 +69,11 @@ const geminiService = {
 
             if (imagePath) {
                 const imageParts = await fileToGenerativePart(imagePath, "image/jpeg");
-                const basePrompt = "Como un experto asesor de belleza capilar, responde a la siguiente pregunta del usuario: ";
-                parts.push({text: basePrompt + imageParts});
+                const basePrompt = `
+                        Actúa como un experto asesor de belleza capilar con un profundo conocimiento en el cuidado del cabello y el cuero cabelludo.
+                        Responde a la siguiente pregunta del usuario de manera clara, concisa y profesional:
+                        `;
+                parts.push({ text: basePrompt + imageParts });
             }
 
             parts.push({ text: message });

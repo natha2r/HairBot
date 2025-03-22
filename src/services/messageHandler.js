@@ -3,6 +3,7 @@ import geminiService from "./geminiService.js";
 import * as messages from "./messages.js";
 import paymentController from "../controllers/paymentController.js";
 import stateManager from "./stateManager.js";
+import { prompts } from "./prompts.js"
 
 class MessageHandler {
     constructor() {
@@ -31,17 +32,24 @@ class MessageHandler {
     async handleTextMessage(message, senderInfo) {
         try {
             const incomingMessage = message.text.body.toLowerCase().trim();
+    
             if (this.isGreeting(incomingMessage)) {
                 await this.sendWelcomeSequence(message.from, senderInfo);
             } else if (this.consultationState[message.from]) {
                 await this.handleConsultationFlow(message.from, incomingMessage);
-            } else {
+            } else if (await this.isMenuOption(incomingMessage)) {
                 await this.handleMenuOption(message.from, incomingMessage);
+            } else {
+                await whatsappService.sendMessage(
+                    message.from,
+                    "No estoy seguro de haber entendido. Puedes escribir 'menu' para ver opciones disponibles."
+                );
             }
         } catch (error) {
             console.error("Error handling text message:", error);
         }
     }
+    
 
     async handleInteractiveMessage(message) {
         try {
@@ -154,7 +162,7 @@ class MessageHandler {
             const preliminaryResponse = await geminiService.analyzeHairImages(
                 photo1Path,
                 photo2Path,
-                "Eres un experto en cuidado capilar. Realiza un análisis preliminar breve del estado del cuero cabelludo y el cabello."
+                prompts.PRELIMINARY_ANALYSIS
             );
 
             console.log(
@@ -222,10 +230,17 @@ class MessageHandler {
             const fullAnalysis = await geminiService.analyzeHairImages(
                 photo1Path,
                 photo2Path,
-                "Eres un experto en cuidado capilar. Realiza un análisis completo y detallado del estado del cuero cabelludo y el cabello. Incluye recomendaciones de cuidado capilar."
+                prompts.FULL_ANALYSIS
+
             );
 
             await whatsappService.sendMessage(to, fullAnalysis);
+
+            // Guardar el análisis en el estado para usarlo luego
+            state.fullAnalysis = fullAnalysis;
+            stateManager.setState(to, state);
+
+            await this.moreButtons(to);
             stateManager.deleteState(to); // Limpiar el estado después de completar el análisis
         } catch (error) {
             console.error("Error en processAnalysisAndSendResults:", error);
@@ -234,6 +249,15 @@ class MessageHandler {
                 `Ocurrió un error al procesar el análisis completo: ${error}`
             );
         }
+    }
+
+    async offerProducts(to) {
+        const message = "¿Deseas ver productos que te ayuden a mejorar la salud de tu cuero cabelludo y cabello?";
+        const buttons = [
+            { type: "reply", reply: { id: "products_yes", title: "Sí" } },
+            { type: "reply", reply: { id: "products_no", title: "No" } },
+        ];
+        await whatsappService.sendInteractiveButtons(to, message, buttons);
     }
 
     // --- Menu Options Handling ---
@@ -248,22 +272,22 @@ class MessageHandler {
                 case "full_analysis_no":
                     await whatsappService.sendMessage(to, "¡Gracias por tu consulta!");
                     break;
-                case "diagnostico":
-                    // Inicializar el estado de la consulta
-                    this.consultationState[to] = {
-                        step: "photo1", // Paso actual del flujo
-                        photo1Id: null, // ID de la primera foto
-                        photo2Id: null, // ID de la segunda foto
-                        paymentStatus: "pending", // Estado del pago (pending, verified)
-                        paymentReceived: false, // Indica si el pago ha sido recibido
-                    };
-                    await whatsappService.sendMediaMessage(
-                        to,
-                        "image",
-                        this.baseUrl + "foto_cuero_cabelludo.jpg",
-                        messages.PRIMERA_FOTO_MESSAGE
-                    );
-                    break;
+                    case "diagnostico":
+                        await whatsappService.sendInteractiveButtons(
+                            to,
+                            "¿Estás seguro de que deseas iniciar el diagnóstico capilar?",
+                            [
+                                { type: "reply", reply: { id: "confirm_diagnostico", title: "Sí" } },
+                                { type: "reply", reply: { id: "menu", title: "No, volver al menú" } },
+                            ]
+                        );
+                        break;
+                    
+                    case "confirm_diagnostico":
+                        this.consultationState[to] = { step: "photo1", photo1Id: null, photo2Id: null, paymentStatus: "pending" };
+                        await whatsappService.sendMediaMessage(to, "image", this.baseUrl + "foto_cuero_cabelludo.jpg", messages.PRIMERA_FOTO_MESSAGE);
+                        break;
+                    
                 case "cita":
                     await whatsappService.sendMessage(to, messages.AGENDA_MESSAGE);
                     await this.sendContact(to);
@@ -279,13 +303,14 @@ class MessageHandler {
                     break;
                 case "terminar":
                     await whatsappService.sendMessage(
-                        to,
-                        "¡Gracias por contactarnos! ¡Esperamos verte pronto!"
-                    );
+                        to, messages.DESPEDIDA_MESSAGE);
                     break;
                 case "menu":
                     await this.sendWelcomeMenu(to);
                     break;
+                case "nuevo_analisis": // Manejar la opción "Realizar nuevo análisis"
+                    await whatsappService.sendMessage(to, "Vamos a realizar un nuevo análisis. Por favor, envía la primera foto de tu cuero cabelludo.");
+                    stateManager.deleteState(to);
                 default:
                     await this.sendErrorMessage(
                         to,
@@ -326,8 +351,8 @@ class MessageHandler {
     // --- Helper Functions ---
 
     isGreeting(message) {
-        const greetings = ["hola", "hello", "hi", "buenas tardes"];
-        return greetings.includes(message);
+        const greetingRegex = /^(hola|hello|hi|buenas|buen día|qué tal|saludos)/i;
+        return greetingRegex.test(message);
     }
 
     getSenderName(senderInfo) {
@@ -372,10 +397,10 @@ class MessageHandler {
             {
                 title: "Opciones Principales",
                 rows: [
-                    { id: "diagnostico", title: "Diagnóstico Capilar" },
-                    { id: "cita", title: "Cita con Profesional" },
-                    { id: "productos", title: "Ver Productos" },
-                    { id: "ubicacion", title: "Ubicación" },
+                    { id: "diagnostico", title: "✨Diagnóstico Capilar✨" },
+                    { id: "cita", title: "Cita con Profesional 💇🏻‍♀️" },
+                    { id: "productos", title: "Ver Productos🧴" },
+                    { id: "ubicacion", title: "Ubicación 📍" },
                 ],
             },
         ];
@@ -407,6 +432,18 @@ class MessageHandler {
         );
     }
 
+    async moreButtons(to) {
+        await whatsappService.sendInteractiveButtons(
+            to,
+            "Puedes ver más opciones aquí:",
+            [
+                { type: "reply", reply: { id: "cita", title: "Agendar Cita 💇🏻‍♀️" } },
+                { type: "reply", reply: { id: "productos", title: "Comprar Productos🧴" } },
+                { type: "reply", reply: { id: "diagnostico", title: "✨Nuevo Diagnóstico✨" } },
+            ]
+        );
+    }
+ 
     async sendLocationInfo(to) {
         const latitude = 7.114296;
         const longitude = -73.112385;

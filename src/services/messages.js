@@ -1,8 +1,5 @@
 export const WELCOME_MESSAGE = (name) =>`¡Hola ${name}! 😊 Bienvenido a Claudia Moreno, tu peluquería de confianza. ✂️💇‍♀️ ¿En qué puedo ayudarte hoy?`;
 
-
-export const MAIN_MENU_MESSAGE = `Para seleccionar una opción, simplemente escribe el número correspondiente:\n\n1️⃣ Consulta capilar \n2️⃣ Reservar cita \n3️⃣ Contacto y ubicación \n4️⃣ Contacta un Asesor 🆘`;
-
 export const PRIMERA_FOTO_MESSAGE = " ¡Comencemos con tu consulta capilar! ✨\n\nPara brindarte un análisis preciso, envía una foto clara de tu cuero cabelludo con buena iluminación, similar al ejemplo que te enviamos. Asegúrate de que la imagen sea nítida y tomada de cerca para obtener los mejores resultados. 📸💆‍♀️";
 
 export const SEGUNDA_FOTO_MESSAGE = "📸 ¡Tu primera foto ha sido recibida! Ahora, para finalizar el análisis, envía una imagen de la parte trasera de tu cabello, siguiendo el ejemplo proporcionado. ✨ Asegúrate de que tenga buena luz y sea nítida para obtener una evaluación precisa. 💇‍♀️";
@@ -27,3 +24,5 @@ export const PRODUCTOS_MESSAGE = "Descubre nuestra increíble variedad de produc
 
 
 export const PAGO_CONFIRMADO = "✅ Pago recibido. Se ha enviado tu análisis completo. ¡Gracias por confiar en nosotros! 💆‍♀️✨";
+
+export const DESPEDIDA_MESSAGE = "¡Gracias por visitarnos! 🌸 Te esperamos pronto para seguir cuidando tu cabello. Si necesitas algo, solo di 'Hola' ✨"

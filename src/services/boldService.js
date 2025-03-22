@@ -82,7 +82,7 @@ class BoldService {
                     state.paymentStatus = 'verified'; // Marcar el pago como verificado
 
                     
-                    await whatsappService.sendMessage(phoneNumber, '✅ Pago recibido. Se ha enviado tu análisis completo.');
+                    await whatsappService.sendMessage(phoneNumber, '✅ ¡Pago recibido, hermosa! 💖 Estamos procesando tu análisis con mucho cuidado. En breve recibirás tu informe completo. ✨💕');
                     
                     // Verificar si las imágenes ya están listas
                     if (state.photo1Id && state.photo2Id) {
@@ -96,18 +96,6 @@ class BoldService {
             console.error('❌ Error en processWebhookEvent:', error);
         }
     }
-
-    // findUserByPaymentLinkId(paymentLinkId) {
-    //     // Lógica para encontrar el número de teléfono asociado al paymentLinkId
-    //     // (puedes usar un mapa o una base de datos)
-    //     for (const phoneNumber in stateManager.consultationState) {
-    //         const state = stateManager.consultationState[phoneNumber];
-    //         if (state.paymentLinkId === paymentLinkId) {
-    //             return phoneNumber;
-    //         }
-    //     }
-    //     return null;
-    // }
 
     findUserByPaymentLinkId(paymentLinkId) {
         console.log(`🔎 Buscando phoneNumber para paymentLinkId: ${paymentLinkId}`);
