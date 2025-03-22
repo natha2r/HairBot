@@ -81,6 +81,9 @@ class BoldService {
                 if (state) {
                     state.paymentStatus = 'verified'; // Marcar el pago como verificado
 
+                    
+                    await whatsappService.sendMessage(phoneNumber, '✅ Pago recibido. Se ha enviado tu análisis completo.');
+                    
                     // Verificar si las imágenes ya están listas
                     if (state.photo1Id && state.photo2Id) {
                         await messageHandler.processAnalysisAndSendResults(phoneNumber);
