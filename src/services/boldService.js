@@ -21,7 +21,7 @@ class BoldService {
                 },
                 description: orderId || "Diagnóstico Capilar",
                 expiration_date: expiration_date || (Date.now() * 1e6) + (10 * 60 * 1e9),
-                image_url: "https://8spn764p-3000.use2.devtunnels.ms/images/diagnostico.jpg",
+                image_url: `${config.DOMINIO_URL}/images/diagnostico.jpg`,
             };
             const response = await axios.post(config.BOLD_API_LINK_URL, paymentData, {
                 headers: {

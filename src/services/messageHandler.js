@@ -4,13 +4,14 @@ import * as messages from "./messages.js";
 import paymentController from "../controllers/paymentController.js";
 import stateManager from "./stateManager.js";
 import { prompts } from "./prompts.js";
+import config from "../config/env.js";
 import fs from "fs";
 import cron from "node-cron";
 
 class MessageHandler {
     constructor() {
         this.consultationState = {};
-        this.baseUrl = "https://8spn764p-3000.use2.devtunnels.ms/images/";
+        this.baseUrl = config.DOMINIO_URL+"/images/";
         this.IMAGE_DIR = "./temp";
         this.scheduleImageCleanup();
         }
