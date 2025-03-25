@@ -169,22 +169,15 @@ class MessageHandler {
                 );
                 // Verificar si el pago ya fue recibido
                 if (state.paymentStatus === "verified") {
-                    console.log(
-                        `🔥 Pago ya verificado. Iniciando análisis preliminar para ${phoneNumber}...`
-                    );
                     await this.preliminaryAnalysis(
                         phoneNumber,
                         state.photo1Id,
                         state.photo2Id
                     );
                 } else {
-                    console.log(
-                        `⏳ Esperando pago para ${phoneNumber} antes de proceder con el análisis.`
-                    );
                 }
             }
 
-            console.log(`📸 Estado actualizado para ${phoneNumber}:`, state);
         } catch (error) {
             console.error("❌ Error en handleImageMessage:", error);
             await whatsappService.sendMessage(
@@ -203,9 +196,6 @@ class MessageHandler {
     // Ejemplo de reutilización de imágenes
     async preliminaryAnalysis(to, photo1Id, photo2Id) {
         try {
-            console.log(
-                `🔍 Descargando imágenes para análisis preliminar de ${to}...`
-            );
 
             const [photo1Path, photo2Path] = await Promise.all([
                 whatsappService.downloadMedia(photo1Id),
@@ -217,17 +207,12 @@ class MessageHandler {
                 return;
             }
 
-            console.log(`📸 Imágenes descargadas: ${photo1Path}, ${photo2Path}`);
+            
 
             const preliminaryResponse = await geminiService.analyzeHairImages(
                 photo1Path,
                 photo2Path,
                 prompts.PRELIMINARY_ANALYSIS
-            );
-
-            console.log(
-                `📨 Enviando análisis preliminar a ${to}:`,
-                preliminaryResponse
             );
             await whatsappService.sendMessage(to, preliminaryResponse);
 
@@ -244,15 +229,8 @@ class MessageHandler {
 
     // En processAnalysisAndSendResults
     async processAnalysisAndSendResults(to) {
-        console.log(`🚀 Ejecutando processAnalysisAndSendResults para ${to}`);
         try {
             const state = stateManager.getState(to);
-
-            console.log("Estado actual:", {
-                paymentStatus: state.paymentStatus,
-                photo1Id: state.photo1Id,
-                photo2Id: state.photo2Id,
-            });
             if (
                 !state ||
                 state.paymentStatus !== "verified" ||
@@ -266,8 +244,6 @@ class MessageHandler {
                 return;
             }
 
-            console.log("id foto 1: ", state.photo1Id);
-            console.log("id foto 2: ", state.photo2Id);
 
             // Descargar las imágenes
             const [photo1Path, photo2Path] = await Promise.all([
@@ -307,7 +283,6 @@ class MessageHandler {
                     fs.promises.unlink(photo1Path),
                     fs.promises.unlink(photo2Path)
                 ]);
-                console.log("🗑️ Imágenes eliminadas correctamente.");
             } catch (err) {
                 console.error("❌ Error al eliminar las imágenes:", err);
             }
@@ -338,7 +313,6 @@ class MessageHandler {
 
     async handleMenuOption(to, option) {
         try {
-            console.log("Handling menu option:", { to, option });
             switch (option) {
                 case "full_analysis_yes":
                     await paymentController.generatePaymentLink(to);
