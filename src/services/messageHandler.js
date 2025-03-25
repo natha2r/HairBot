@@ -14,14 +14,18 @@ class MessageHandler {
         this.baseUrl = config.DOMINIO_URL+"/images/";
         this.IMAGE_DIR = "./temp";
         this.scheduleImageCleanup();
-        console.log("Base URL:", this.baseUrl);
         }
 
+
+        
     // --- Message Handling ---
 
     async handleIncomingMessage(message, senderInfo) {
         try {
             console.log("Handling incoming message:", message);
+            console.log("DOMINIO_URL:", config.DOMINIO_URL);
+            console.log("Base URL:", this.baseUrl);
+
             if (message?.type === "text") {
                 await this.handleTextMessage(message, senderInfo);
             } else if (message?.type === "interactive") {
