@@ -1,6 +1,6 @@
 import express from 'express';
 import webhookController from '../controllers/WebhookController.js';
-import webhookControllerBold from '../controllers/webhookControllerBold.js'; // ✅ Importa el archivo correcto
+import webhookControllerBold from '../controllers/WebhookControllerBold.js';
 import PaymentController from '../controllers/paymentController.js';
 
 const router = express.Router();
