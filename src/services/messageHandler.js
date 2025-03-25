@@ -101,11 +101,11 @@ class MessageHandler {
     async handleImageMessage(phoneNumber, imageId) {
         try {
             let state = stateManager.getState(phoneNumber);
-            if (!state) {
+            if (!state || state.step === "none") {
                 state = {
-                    paymentStatus: "verified", // Asumiendo que el pago ya está verificado
+                    paymentStatus: "verified", // Asumimos que el pago sigue válido
                     images: [],
-                    step: "photo1", // Inicializar el paso
+                    step: "photo1",
                 };
                 stateManager.setState(phoneNumber, state);
             }
@@ -334,7 +334,8 @@ class MessageHandler {
                     await paymentController.generatePaymentLink(to);
                     break;
                 case "full_analysis_no":
-                    await whatsappService.sendMessage(to, "¡Gracias por tu consulta!");
+                    await whatsappService.sendMessage(to, "¡Gracias por tu consulta 😊!, ¿En qué más puedo ayudarte?");
+                    await this.moreButtons(to);
                     break;
                 case "diagnostico":
                     await whatsappService.sendInteractiveButtons(
@@ -354,12 +355,14 @@ class MessageHandler {
                     break;
 
                 case "confirm_diagnostico":
-                    this.consultationState[to] = {
+                    stateManager.setState(to, {
+                        paymentStatus: "verified", // O el estado de pago inicial que necesites
+                        images: [],
                         step: "photo1",
                         photo1Id: null,
                         photo2Id: null,
-                        paymentStatus: "pending",
-                    };
+                        timestamp: Date.now(),
+                    });
                     await whatsappService.sendMediaMessage(
                         to,
                         "image",
