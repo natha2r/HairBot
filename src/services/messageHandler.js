@@ -14,6 +14,7 @@ class MessageHandler {
         this.baseUrl = config.DOMINIO_URL+"/images/";
         this.IMAGE_DIR = "./temp";
         this.scheduleImageCleanup();
+        console.log("Base URL:", this.baseUrl);
         }
 
     // --- Message Handling ---
