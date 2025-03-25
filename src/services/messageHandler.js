@@ -11,7 +11,9 @@ import cron from "node-cron";
 class MessageHandler {
     constructor() {
         this.consultationState = {};
+        console.log("DOMINIO_URL:", config.DOMINIO_URL);
         this.baseUrl = config.DOMINIO_URL+"/images/";
+        console.log("Base URL:", this.baseUrl);
         this.IMAGE_DIR = "./temp";
         this.scheduleImageCleanup();
         }
