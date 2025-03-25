@@ -12,15 +12,17 @@ class MessageHandler {
     constructor() {
         this.consultationState = {};
         console.log("DOMINIO_URL:", config.DOMINIO_URL);
-        this.baseUrl = config.DOMINIO_URL+"/images/";
+        this.baseUrl = config.DOMINIO_URL 
+    ? config.DOMINIO_URL + "/images/"
+    : "https://hairbot-production.up.railway.app/images/";
+
         console.log("Base URL:", this.baseUrl);
         this.IMAGE_DIR = "./temp";
         this.scheduleImageCleanup();
         }
 
 
-        
-    // --- Message Handling ---
+
 
     async handleIncomingMessage(message, senderInfo) {
         try {
@@ -67,7 +69,7 @@ class MessageHandler {
                 return;
             }
 
-            // Detectar si el mensaje coincide con un comando conocido
+
             const detectedOption = await this.detectKeywords(incomingMessage);
             if (detectedOption) {
                 await this.handleMenuOption(message.from, detectedOption);
@@ -104,14 +106,14 @@ class MessageHandler {
         }
     }
 
-    // --- Image Handling ---
+
 
     async handleImageMessage(phoneNumber, imageId) {
         try {
             let state = stateManager.getState(phoneNumber);
             if (!state || state.step === "none") {
                 state = {
-                    paymentStatus: "verified", // Asumimos que el pago sigue válido
+                    paymentStatus: "verified", 
                     images: [],
                     step: "photo1",
                 };
@@ -134,7 +136,7 @@ class MessageHandler {
                     messages.SEGUNDA_FOTO_MESSAGE
                 );
 
-                // ⏳ Establecer un recordatorio en 5 minutos si no envía la segunda foto
+                //  Establecer un recordatorio en 5 minutos si no envía la segunda foto
                 setTimeout(async () => {
                     const updatedState = stateManager.getState(phoneNumber);
                     if (

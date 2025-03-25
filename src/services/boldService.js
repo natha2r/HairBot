@@ -6,7 +6,7 @@ import stateManager from './stateManager.js';
 
 class BoldService {
     constructor() {
-        this.paymentLinkToPhoneNumber = new Map(); // Mapa para almacenar la relación paymentLinkId -> phoneNumber
+        this.paymentLinkToPhoneNumber = new Map();
     }
 
     async createPaymentLink(paymentDetails, phoneNumber) {
@@ -31,7 +31,7 @@ class BoldService {
             });
 
             if (response.data?.payload?.url) {
-                const paymentLinkId = response.data.payload.id; // Extraer el paymentLinkId
+                const paymentLinkId = response.data.payload.id; 
                 if (phoneNumber) {
                     this.paymentLinkToPhoneNumber.set(paymentLinkId, phoneNumber); // Guardar en el mapa
                     messageHandler.consultationState[phoneNumber] = {
