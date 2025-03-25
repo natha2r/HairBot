@@ -396,6 +396,7 @@ class MessageHandler {
                         "Vamos a realizar un nuevo análisis. Por favor, envía la primera foto de tu cuero cabelludo."
                     );
                     stateManager.deleteState(to);
+                break;
                 default:
                     await this.sendErrorMessage(
                         to,
