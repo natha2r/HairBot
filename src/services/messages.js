@@ -25,4 +25,4 @@ export const PRODUCTOS_MESSAGE = "Descubre nuestra increíble variedad de produc
 
 export const PAGO_CONFIRMADO = "✅ Pago recibido. Se ha enviado tu análisis completo. ¡Gracias por confiar en nosotros! 💆‍♀️✨";
 
-export const DESPEDIDA_MESSAGE = "¡Gracias por visitarnos! 🌸 Te esperamos pronto para seguir cuidando tu cabello. Si necesitas algo, solo di 'Hola' ✨"
+export const DESPEDIDA_MESSAGE = "¡Gracias por visitarnos! 🌸 Te esperamos pronto para seguir cuidando tu cabello. Si necesitas algo, solo escribe 'Hola' ✨"

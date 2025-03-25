@@ -3,13 +3,17 @@ import geminiService from "./geminiService.js";
 import * as messages from "./messages.js";
 import paymentController from "../controllers/paymentController.js";
 import stateManager from "./stateManager.js";
-import { prompts } from "./prompts.js"
+import { prompts } from "./prompts.js";
+import fs from "fs";
+import cron from "node-cron";
 
 class MessageHandler {
     constructor() {
         this.consultationState = {};
         this.baseUrl = "https://8spn764p-3000.use2.devtunnels.ms/images/";
-    }
+        this.IMAGE_DIR = "./temp";
+        this.scheduleImageCleanup();
+        }
 
     // --- Message Handling ---
 
@@ -29,27 +33,52 @@ class MessageHandler {
         }
     }
 
+    async detectKeywords(message) {
+        const keywords = {
+            "diagnóstico": "diagnostico",
+            "cita": "cita",
+            "ubicación": "ubicacion",
+            "productos": "productos",
+        };
+
+        for (const key in keywords) {
+            if (message.includes(key)) {
+                return keywords[key];
+            }
+        }
+
+        return null;
+    }
+
     async handleTextMessage(message, senderInfo) {
         try {
             const incomingMessage = message.text.body.toLowerCase().trim();
-    
+
             if (this.isGreeting(incomingMessage)) {
                 await this.sendWelcomeSequence(message.from, senderInfo);
-            } else if (this.consultationState[message.from]) {
-                await this.handleConsultationFlow(message.from, incomingMessage);
-            } else if (await this.isMenuOption(incomingMessage)) {
-                await this.handleMenuOption(message.from, incomingMessage);
-            } else {
-                await whatsappService.sendMessage(
-                    message.from,
-                    "No estoy seguro de haber entendido. Puedes escribir 'menu' para ver opciones disponibles."
-                );
+                return;
             }
+
+            // Detectar si el mensaje coincide con un comando conocido
+            const detectedOption = await this.detectKeywords(incomingMessage);
+            if (detectedOption) {
+                await this.handleMenuOption(message.from, detectedOption);
+                return;
+            }
+
+            if (this.consultationState[message.from]) {
+                await this.handleConsultationFlow(message.from, incomingMessage);
+                return;
+            }
+
+            await whatsappService.sendMessage(
+                message.from,
+                "🤖 No estoy seguro de haber entendido. Puedes escribir *'menú'* para ver opciones disponibles o preguntar sobre nuestros servicios."
+            );
         } catch (error) {
             console.error("Error handling text message:", error);
         }
     }
-    
 
     async handleInteractiveMessage(message) {
         try {
@@ -70,7 +99,6 @@ class MessageHandler {
     // --- Image Handling ---
 
     async handleImageMessage(phoneNumber, imageId) {
-        console.log(`📩 Recibiendo imagen para ${phoneNumber}, ID: ${imageId}`);
         try {
             let state = stateManager.getState(phoneNumber);
             if (!state) {
@@ -91,22 +119,44 @@ class MessageHandler {
             if (state.step === "photo1") {
                 state.photo1Id = imageId;
                 state.step = "photo2";
-                console.log(
-                    `📸 Primera imagen recibida para ${phoneNumber}. Avanzando a photo2.`
-                );
                 await whatsappService.sendMediaMessage(
                     phoneNumber,
                     "image",
                     this.baseUrl + "foto_espalda.jpg",
                     messages.SEGUNDA_FOTO_MESSAGE
                 );
+
+                // ⏳ Establecer un recordatorio en 5 minutos si no envía la segunda foto
+                setTimeout(async () => {
+                    const updatedState = stateManager.getState(phoneNumber);
+                    if (
+                        updatedState &&
+                        updatedState.step === "photo2" &&
+                        !updatedState.photo2Id
+                    ) {
+                        await whatsappService.sendMessage(
+                            phoneNumber,
+                            "📸 ¿Aún estás ahí? Envíanos la segunda foto para continuar con tu diagnóstico."
+                        );
+                    }
+                }, 30000); // 5 minutos
+
+                setTimeout(async () => {
+                    const updatedState = stateManager.getState(phoneNumber);
+                    if (updatedState && updatedState.step === "photo2" && !updatedState.photo2Id) {
+                        await whatsappService.sendMessage(phoneNumber, "⏳ Hemos cancelado el proceso por inactividad. Si deseas intentarlo de nuevo, envía 'diagnóstico'.");
+                        stateManager.setState(phoneNumber, { step: "none" }); // Restablecer el estado
+                    }
+                }, 900000); // 15 minutos
+
+
             } else if (state.step === "photo2") {
                 state.photo2Id = imageId;
-                console.log(
-                    `✅ Segunda imagen recibida para ${phoneNumber}. Estado actualizado:`,
-                    state
+
+                await whatsappService.sendMessage(
+                    phoneNumber,
+                    messages.ANALISIS_MESSAGE
                 );
-                await whatsappService.sendMessage(phoneNumber, messages.ANALISIS_MESSAGE);
                 // Verificar si el pago ya fue recibido
                 if (state.paymentStatus === "verified") {
                     console.log(
@@ -231,7 +281,6 @@ class MessageHandler {
                 photo1Path,
                 photo2Path,
                 prompts.FULL_ANALYSIS
-
             );
 
             await whatsappService.sendMessage(to, fullAnalysis);
@@ -241,7 +290,21 @@ class MessageHandler {
             stateManager.setState(to, state);
 
             await this.moreButtons(to);
-            stateManager.deleteState(to); // Limpiar el estado después de completar el análisis
+
+            // ✅ Eliminar imágenes después del análisis
+            try {
+                await Promise.all([
+                    fs.promises.unlink(photo1Path),
+                    fs.promises.unlink(photo2Path)
+                ]);
+                console.log("🗑️ Imágenes eliminadas correctamente.");
+            } catch (err) {
+                console.error("❌ Error al eliminar las imágenes:", err);
+            }
+
+            // ✅ Limpiar el estado después de completar el análisis
+            stateManager.deleteState(to);
+
         } catch (error) {
             console.error("Error en processAnalysisAndSendResults:", error);
             await this.sendErrorMessage(
@@ -252,7 +315,8 @@ class MessageHandler {
     }
 
     async offerProducts(to) {
-        const message = "¿Deseas ver productos que te ayuden a mejorar la salud de tu cuero cabelludo y cabello?";
+        const message =
+            "¿Deseas ver productos que te ayuden a mejorar la salud de tu cuero cabelludo y cabello?";
         const buttons = [
             { type: "reply", reply: { id: "products_yes", title: "Sí" } },
             { type: "reply", reply: { id: "products_no", title: "No" } },
@@ -272,22 +336,38 @@ class MessageHandler {
                 case "full_analysis_no":
                     await whatsappService.sendMessage(to, "¡Gracias por tu consulta!");
                     break;
-                    case "diagnostico":
-                        await whatsappService.sendInteractiveButtons(
-                            to,
-                            "¿Estás seguro de que deseas iniciar el diagnóstico capilar?",
-                            [
-                                { type: "reply", reply: { id: "confirm_diagnostico", title: "Sí" } },
-                                { type: "reply", reply: { id: "menu", title: "No, volver al menú" } },
-                            ]
-                        );
-                        break;
-                    
-                    case "confirm_diagnostico":
-                        this.consultationState[to] = { step: "photo1", photo1Id: null, photo2Id: null, paymentStatus: "pending" };
-                        await whatsappService.sendMediaMessage(to, "image", this.baseUrl + "foto_cuero_cabelludo.jpg", messages.PRIMERA_FOTO_MESSAGE);
-                        break;
-                    
+                case "diagnostico":
+                    await whatsappService.sendInteractiveButtons(
+                        to,
+                        "¿Estás seguro de que deseas iniciar el diagnóstico capilar?",
+                        [
+                            {
+                                type: "reply",
+                                reply: { id: "confirm_diagnostico", title: "Sí" },
+                            },
+                            {
+                                type: "reply",
+                                reply: { id: "menu", title: "No, volver al menú" },
+                            },
+                        ]
+                    );
+                    break;
+
+                case "confirm_diagnostico":
+                    this.consultationState[to] = {
+                        step: "photo1",
+                        photo1Id: null,
+                        photo2Id: null,
+                        paymentStatus: "pending",
+                    };
+                    await whatsappService.sendMediaMessage(
+                        to,
+                        "image",
+                        this.baseUrl + "foto_cuero_cabelludo.jpg",
+                        messages.PRIMERA_FOTO_MESSAGE
+                    );
+                    break;
+
                 case "cita":
                     await whatsappService.sendMessage(to, messages.AGENDA_MESSAGE);
                     await this.sendContact(to);
@@ -302,14 +382,16 @@ class MessageHandler {
                     await this.sendHelpButtons(to); // Reutilización de función
                     break;
                 case "terminar":
-                    await whatsappService.sendMessage(
-                        to, messages.DESPEDIDA_MESSAGE);
+                    await whatsappService.sendMessage(to, messages.DESPEDIDA_MESSAGE);
                     break;
                 case "menu":
                     await this.sendWelcomeMenu(to);
                     break;
                 case "nuevo_analisis": // Manejar la opción "Realizar nuevo análisis"
-                    await whatsappService.sendMessage(to, "Vamos a realizar un nuevo análisis. Por favor, envía la primera foto de tu cuero cabelludo.");
+                    await whatsappService.sendMessage(
+                        to,
+                        "Vamos a realizar un nuevo análisis. Por favor, envía la primera foto de tu cuero cabelludo."
+                    );
                     stateManager.deleteState(to);
                 default:
                     await this.sendErrorMessage(
@@ -413,7 +495,8 @@ class MessageHandler {
     }
 
     async offerFullAnalysis(to) {
-        const message = "¿Deseas un análisis completo y detallado? Costo: $50.000";
+        const message =
+            "Obtén un análisis completo y detallado por solo $49.900. ¡Descubre más sobre tu cabello! ✨";
         const buttons = [
             { type: "reply", reply: { id: "full_analysis_yes", title: "Sí" } },
             { type: "reply", reply: { id: "full_analysis_no", title: "No" } },
@@ -438,12 +521,18 @@ class MessageHandler {
             "Puedes ver más opciones aquí:",
             [
                 { type: "reply", reply: { id: "cita", title: "Agendar Cita 💇🏻‍♀️" } },
-                { type: "reply", reply: { id: "productos", title: "Comprar Productos🧴" } },
-                { type: "reply", reply: { id: "diagnostico", title: "✨Nuevo Diagnóstico✨" } },
+                {
+                    type: "reply",
+                    reply: { id: "productos", title: "Comprar Productos🧴" },
+                },
+                {
+                    type: "reply",
+                    reply: { id: "diagnostico", title: "✨Nuevo Diagnóstico✨" },
+                },
             ]
         );
     }
- 
+
     async sendLocationInfo(to) {
         const latitude = 7.114296;
         const longitude = -73.112385;
@@ -458,6 +547,37 @@ class MessageHandler {
         );
     }
 
+    // Función para eliminar imágenes de más de 24 horas
+    deleteOldImages() {
+        try {
+            const files = fs.readdirSync(this.IMAGE_DIR);
+            const now = Date.now();
+
+            files.forEach(file => {
+                const filePath = `${this.IMAGE_DIR}/${file}`;
+                const stats = fs.statSync(filePath);
+
+                if (now - stats.mtimeMs > 24 * 60 * 60 * 1000) {
+                    fs.unlinkSync(filePath);
+                    console.log(`🗑️ Imagen eliminada: ${file}`);
+                }
+            });
+
+            console.log("✅ Limpieza de imágenes completada.");
+        } catch (error) {
+            console.error("❌ Error eliminando imágenes:", error);
+        }
+    }
+
+    // Programar eliminación automática de imágenes
+    scheduleImageCleanup() {
+        cron.schedule("0 0 * * *", () => {
+            console.log("⏳ Ejecutando limpieza de imágenes...");
+            this.deleteOldImages();
+        });
+    }
+
+
     // --- Error Handling ---
 
     async sendErrorMessage(to, errorMessage) {
@@ -465,5 +585,6 @@ class MessageHandler {
         await whatsappService.sendMessage(to, errorMessage);
     }
 }
+
 
 export default new MessageHandler();
