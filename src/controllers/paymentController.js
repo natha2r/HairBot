@@ -12,7 +12,7 @@ class PaymentController {
             const paymentDetails = {}; // O puedes pasar detalles específicos del pago aquí
             const paymentLink = await boldService.createPaymentLink(paymentDetails, to); // Corregido: se pasan dos argumentos
             console.log("Payment link generated:", paymentLink);
-            await whatsappService.sendMessage(to, `Aquí tienes el enlace para completar tu pago de forma segura: ${paymentLink}. Estaremos esperando aprobación del pago para enviar tu diagnóstico completo 😊`);
+            await whatsappService.sendMessage(to, `Aquí tienes el enlace para completar tu pago de forma segura: ${paymentLink}. Una vez confirmado, procederemos con tu diagnóstico completo 😊. Si el enlace ha vencido, escribe "Diagnóstico" para iniciar un nuevo proceso. ¡Estamos aquí para ayudarte! 💙`);
             // Obtener el ID del enlace de pago de la URL
             const paymentLinkId = paymentLink.split('/').pop();
             console.log('Payment link ID:', paymentLinkId);

@@ -25,4 +25,14 @@ export const PRODUCTOS_MESSAGE = "Descubre nuestra increíble variedad de produc
 
 export const PAGO_CONFIRMADO = "✅ Pago recibido. Se ha enviado tu análisis completo. ¡Gracias por confiar en nosotros! 💆‍♀️✨";
 
-export const DESPEDIDA_MESSAGE = "¡Gracias por visitarnos! 🌸 Te esperamos pronto para seguir cuidando tu cabello. Si necesitas algo, solo escribe 'Hola' ✨"
+export const DESPEDIDA_MESSAGE = "¡Gracias por visitarnos! 🌸 Te esperamos pronto para seguir cuidando tu cabello. Si necesitas algo, solo escribe 'Hola' ✨";
+
+export const OFRECER_FULLANALYSIS_MESSAGE = "Diagnóstico Capilar Profesional por solo $49.900\n\n" +
+
+                                    "✨ Descubre todo sobre la salud de tu cuero cabelludo y cabello con un diagnóstico 100% personalizado:\n\n" +
+                                    "✅ Evaluación del cuero cabelludo\n" +
+                                    "✅ Análisis de la hebra capilar\n" +
+                                    "✅ Detección de problemas capilares\n" +
+                                    "✅ Recomendaciones personalizadas\n" +
+                                    "✅ Sugerencia de productos profesionales\n\n" +
+                                    "💆‍♀️ ¡Haz que tu cabello luzca más sano, fuerte y radiante!";

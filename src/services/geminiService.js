@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import config from "../config/env.js";
 import fs from 'fs/promises';
+import { prompts } from "./prompts.js";
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -22,31 +23,7 @@ async function fileToGenerativePart(path, mimeType) {
 
 const geminiService = {
 
-    analyzeHairImages: async (imagePath1, imagePath2, prompt = `
-                Actúa como un tricólogo profesional con más de 20 años de experiencia en el diagnóstico y tratamiento de problemas capilares.
-                Analiza las dos imágenes proporcionadas: una del cuero cabelludo y otra de la hebra capilar.
-
-                **Análisis del cuero cabelludo:**
-                - Determina el tipo de cuero cabelludo (seco, graso, mixto o normal).
-                - Evalúa la presencia de condiciones como caspa, enrojecimiento, irritación, inflamación o signos de alopecia.
-                - Describe cualquier anomalía visible en la textura o color del cuero cabelludo.
-
-                **Análisis de la hebra capilar:**
-                - Describe la textura del cabello (liso, ondulado, rizado o afro).
-                - Evalúa el grosor del cabello (fino, medio o grueso).
-                - Determina el estado general del cabello (hidratado, seco, dañado, quebradizo, poroso, con frizz, puntas abiertas o si está teñido).
-                - Identifica cualquier daño visible en la cutícula del cabello.
-
-                **Formato de la respuesta:**
-                - **Condición del cuero cabelludo:** [Descripción detallada].
-                - **Estado del cabello:** [Descripción detallada].
-                - **Recomendaciones:** [Lista de recomendaciones personalizadas para el cuidado capilar].
-
-                **Ejemplo de respuesta esperada:**
-                - **Condición del cuero cabelludo:** [Ejemplo de diagnóstico].
-                - **Estado del cabello:** [Ejemplo de diagnóstico].
-                - **Recomendaciones:** [Ejemplo de recomendaciones].
-                `) => {
+    preliminaryAnalysis: async (imagePath1, imagePath2, prompt = prompts.FULL_ANALYSIS) => {
         try {
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
             const imageParts1 = await fileToGenerativePart(imagePath1, "image/jpeg");
@@ -61,6 +38,22 @@ const geminiService = {
             return "Hubo un error al analizar las imágenes del cabello.";
         }
     },
+
+    fullAnalysis: async (imagePath1, imagePath2, prompt = prompts.FULL_ANALYSIS) => {
+try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const imageParts1 = await fileToGenerativePart(imagePath1, "image/jpeg");
+    const imageParts2 = await fileToGenerativePart(imagePath2, "image/jpeg");
+    const parts = [imageParts1, imageParts2, { text: prompt }];
+    const result = await model.generateContent(parts);
+    const response = await result.response;
+    const text = response.candidates[0].content.parts[0].text;
+    return text;
+} catch (error) {
+    console.error("Error en analyzeHairImages:", error);
+    return "Hubo un error al analizar las imágenes del cabello.";
+}
+},
 
     generalQuery: async (message, imagePath) => {
         try {
@@ -87,5 +80,7 @@ const geminiService = {
         }
     }
 };
+
+
 
 export default geminiService;

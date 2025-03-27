@@ -13,6 +13,7 @@ class MessageHandler {
         this.baseUrl = "https://8spn764p-3000.use2.devtunnels.ms/images/"; //https://hairbot-production.up.railway.app/webhook
         this.IMAGE_DIR = "./temp";
         this.scheduleImageCleanup();
+        this.deleteOldImages();
         }
 
     // --- Message Handling ---
@@ -188,7 +189,7 @@ class MessageHandler {
         return true;
     }
 
-    // --- Analysis ---
+    // --- Analysis --
 
     // Ejemplo de reutilización de imágenes
     async preliminaryAnalysis(to, photo1Id, photo2Id) {
@@ -209,7 +210,7 @@ class MessageHandler {
 
             console.log(`📸 Imágenes descargadas: ${photo1Path}, ${photo2Path}`);
 
-            const preliminaryResponse = await geminiService.analyzeHairImages(
+            const preliminaryResponse = await geminiService.preliminaryAnalysis(
                 photo1Path,
                 photo2Path,
                 prompts.PRELIMINARY_ANALYSIS
@@ -277,7 +278,7 @@ class MessageHandler {
             }
 
             // Realizar el análisis completo
-            const fullAnalysis = await geminiService.analyzeHairImages(
+            const fullAnalysis = await geminiService.fullAnalysis(
                 photo1Path,
                 photo2Path,
                 prompts.FULL_ANALYSIS
@@ -499,8 +500,7 @@ class MessageHandler {
     }
 
     async offerFullAnalysis(to) {
-        const message =
-            "Obtén un análisis completo y detallado por solo $49.900. ¡Descubre más sobre tu cabello! ✨";
+        const message = messages.OFRECER_FULLANALYSIS_MESSAGE;
         const buttons = [
             { type: "reply", reply: { id: "full_analysis_yes", title: "Sí" } },
             { type: "reply", reply: { id: "full_analysis_no", title: "No" } },
