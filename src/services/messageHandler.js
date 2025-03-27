@@ -540,7 +540,7 @@ class MessageHandler {
     async sendLocationInfo(to) {
         const latitude = 7.114296;
         const longitude = -73.112385;
-        const name = "Alpelo Peluquería";
+        const name = "Claudia Moreno";
         const address = "📌 Cra. 31 #50 - 21, Sotomayor, Bucaramanga, Santander";
         await whatsappService.sendLocationMessage(
             to,
