@@ -36,18 +36,24 @@ class MessageHandler {
 
     async detectKeywords(message) {
         const keywords = {
-            "diagnóstico": "diagnostico",
+            "diagnostico": "diagnostico",
             "cita": "cita",
-            "ubicación": "ubicacion",
+            "ubicacion": "ubicacion",
             "productos": "productos",
+            "menu": "menu"
         };
 
+        const normalizedMessage = message
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+    
         for (const key in keywords) {
-            if (message.includes(key)) {
+            if (normalizedMessage.includes(key)) {
                 return keywords[key];
             }
         }
-
+    
         return null;
     }
 
@@ -154,10 +160,6 @@ class MessageHandler {
             } else if (state.step === "photo2") {
                 state.photo2Id = imageId;
 
-                await whatsappService.sendMessage(
-                    phoneNumber,
-                    messages.ANALISIS_MESSAGE
-                );
                 // Verificar si el pago ya fue recibido
                 if (state.paymentStatus === "verified") {
                     console.log(

@@ -1,4 +1,4 @@
-export const WELCOME_MESSAGE = (name) =>`¡Hola ${name}! 😊 Bienvenido a Claudia Moreno, tu peluquería de confianza. ✂️💇‍♀️ ¿En qué puedo ayudarte hoy?`;
+export const WELCOME_MESSAGE = (name) =>`¡Hola, ${name}! 😊 Bienvenido a tu peluquería de confianza con nuestra tricóloga experta, Claudia Moreno. ✂️💇‍♀️ ¿Qué puedo hacer por ti hoy? `;
 
 export const PRIMERA_FOTO_MESSAGE = " ¡Comencemos con tu consulta capilar! ✨\n\nPara brindarte un análisis preciso, envía una foto clara de tu cuero cabelludo con buena iluminación, similar al ejemplo que te enviamos. Asegúrate de que la imagen sea nítida y tomada de cerca para obtener los mejores resultados. 📸💆‍♀️";
 
@@ -10,29 +10,25 @@ export const INSTRUCCIONES_MESSAGE = "📢 Para realizar la consulta capilar, si
 
 export const ERROR_IMAGE_MESSAGE = "⚠️ Ocurrió un error al procesar la imagen. Inténtalo nuevamente o contáctanos si necesitas ayuda. 💇‍♀️✨";
 
-export const AGENDA_MESSAGE = "Para agendar tu cita con Claudia Moreno, por favor comunícate con el número de contacto. ¡Estaremos encantados de atenderte y coordinar tu cita en el horario que mejor te convenga! ✂️✨"
+export const AGENDA_MESSAGE = "Para agendar tu cita con nuestra tricóloga Claudia Moreno, por favor comunícate con el número de contacto. ¡Estaremos encantados de atenderte y coordinar tu cita en el horario que mejor te convenga! ✨"
 
 export const PAGO_MESSAGE = "💳 ¡Todo listo para el siguiente paso! Completa tu pago en el siguiente enlace: https://checkout.bold.co/payment/LNK_UR44F1FKLM\n\n💰✨Una vez confirmado el pago, recibirás tu análisis capilar detallado directamente en tu correo. 📩💆‍♀️ ¡Gracias por confiar en nosotros!";
 
 export const HORARIOS_MESSAGE = "🕒 Nuestros horarios: \n\n"+
                             "- Lunes a Viernes: 8:00 AM - 8:00 PM\n"+
                             "- Sábados: 8:00 AM - 8:00 PM\n" +
-                            "- Domingos: 9:00 AM - 2:00 PM\n\n" +
-                            "¡Te esperamos para consentirte y renovar tu estilo! ✨💆‍♀️";
+                            "- Domingos: Cita previa\n\n" +
+                            "¡Te esperamos para consentirte y renovar tu estilo! ✨";
 
 export const PRODUCTOS_MESSAGE = "Descubre nuestra increíble variedad de productos visitando nuestra página web claudiamoreno.webnode.com.co. ¡No te pierdas lo que tenemos para ti! Explora, elige y encuentra justo lo que necesitas. 😊";
-
-
-export const PAGO_CONFIRMADO = "✅ Pago recibido. Se ha enviado tu análisis completo. ¡Gracias por confiar en nosotros! 💆‍♀️✨";
 
 export const DESPEDIDA_MESSAGE = "¡Gracias por visitarnos! 🌸 Te esperamos pronto para seguir cuidando tu cabello. Si necesitas algo, solo escribe 'Hola' ✨";
 
 export const OFRECER_FULLANALYSIS_MESSAGE = "Diagnóstico Capilar Profesional por solo $49.900\n\n" +
 
-                                    "✨ Descubre todo sobre la salud de tu cuero cabelludo y cabello con un diagnóstico 100% personalizado:\n\n" +
-                                    "✅ Evaluación del cuero cabelludo\n" +
+                                    "✨ Descubre todo sobre la salud de tu cuero cabelludo y hebra capilar con un diagnóstico 100% personalizado:\n\n" +
+                                    "✅ Evaluación de problemas en el cuero cabelludo\n" +
                                     "✅ Análisis de la hebra capilar\n" +
-                                    "✅ Detección de problemas capilares\n" +
                                     "✅ Recomendaciones personalizadas\n" +
                                     "✅ Sugerencia de productos profesionales\n\n" +
                                     "💆‍♀️ ¡Haz que tu cabello luzca más sano, fuerte y radiante!";

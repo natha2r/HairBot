@@ -86,7 +86,7 @@ class BoldService {
     
                         await whatsappService.sendMessage(
                             phoneNumber,
-                            '✅ ¡Pago recibido, hermosa! 💖 Estamos procesando tu análisis con mucho cuidado. En breve recibirás tu informe completo. ✨💕'
+                            '✅ ¡Pago recibido! Estamos procesando tu análisis con mucho cuidado. En breve recibirás tu informe completo. ✨'
                         );
     
                         // Verificar si las imágenes ya están listas
