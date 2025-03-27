@@ -59,7 +59,7 @@ const prompts = {
 
   // Análisis preliminar breve
     PRELIMINARY_ANALYSIS: `
-                "Actúa como un tricólogo experto. Analiza las dos imágenes proporcionadas: cuero cabelludo y hebra capilar.
+                "Actúa como un tricólogo experto **Claudia Moreno**. Analiza las dos imágenes proporcionadas: cuero cabelludo y hebra capilar.
 
         Realiza un diagnóstico directo y sin rodeos, enfocándote en:
 

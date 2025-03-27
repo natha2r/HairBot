@@ -463,7 +463,7 @@ class MessageHandler {
             ],
             emails: [{ email: "tecniclaud@gmail.com", type: "WORK" }],
             name: {
-                formatted_name: "Profesional Claudia",
+                formatted_name: "Tricóloga  Claudia Moreno",
                 first_name: "Claudia Moreno",
                 last_name: "Moreno",
                 middle_name: "",
