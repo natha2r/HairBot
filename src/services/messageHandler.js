@@ -11,6 +11,7 @@ import config from "../config/env.js";
 class MessageHandler {
     constructor() {
         this.consultationState = {};
+        console.log("Variable Dominio URL:", config.DOMINIO_URL);
         this.baseUrl = `${config.DOMINIO_URL}/images/`;
         this.IMAGE_DIR = "./temp";
         this.scheduleImageCleanup();
