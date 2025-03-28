@@ -6,14 +6,15 @@ import stateManager from "./stateManager.js";
 import { prompts } from "./prompts.js";
 import fs from "fs";
 import cron from "node-cron";
+import config from "../config/env.js";
 
 class MessageHandler {
     constructor() {
         this.consultationState = {};
-        this.baseUrl = "https://8spn764p-3000.use2.devtunnels.ms/images/"; //https://hairbot-production.up.railway.app/webhook
+        this.baseUrl = `${config.DOMINIO_URL}/images/`;
         this.IMAGE_DIR = "./temp";
         this.scheduleImageCleanup();
-        this.deleteOldImages();
+        //this.deleteOldImages();
         }
 
     // --- Message Handling ---
@@ -35,27 +36,12 @@ class MessageHandler {
     }
 
     async detectKeywords(message) {
-        const keywords = {
-            "diagnostico": "diagnostico",
-            "cita": "cita",
-            "ubicacion": "ubicacion",
-            "productos": "productos",
-            "menu": "menu"
-        };
-
-        const normalizedMessage = message
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "");
-    
-        for (const key in keywords) {
-            if (normalizedMessage.includes(key)) {
-                return keywords[key];
-            }
-        }
-    
-        return null;
+        const keywords = ["diagnostico", "cita", "ubicacion", "productos", "menu"];
+        const normalizedMessage = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        return keywords.find(keyword => normalizedMessage.includes(keyword)) || null;
     }
+    
 
     async handleTextMessage(message, senderInfo) {
         try {
@@ -110,19 +96,19 @@ class MessageHandler {
             let state = stateManager.getState(phoneNumber);
             if (!state || state.step === "none") {
                 state = {
-                    paymentStatus: "verified", // Asumimos que el pago sigue válido
+                    paymentStatus: "pending", // Inicialmente el pago está pendiente
                     images: [],
                     step: "photo1",
                 };
                 stateManager.setState(phoneNumber, state);
             }
-
+    
             if (!state.images) {
                 state.images = [];
             }
-
+    
             state.images.push(imageId);
-
+    
             if (state.step === "photo1") {
                 state.photo1Id = imageId;
                 state.step = "photo2";
@@ -132,52 +118,14 @@ class MessageHandler {
                     this.baseUrl + "foto_espalda.jpg",
                     messages.SEGUNDA_FOTO_MESSAGE
                 );
-
-                // ⏳ Establecer un recordatorio en 5 minutos si no envía la segunda foto
-                setTimeout(async () => {
-                    const updatedState = stateManager.getState(phoneNumber);
-                    if (
-                        updatedState &&
-                        updatedState.step === "photo2" &&
-                        !updatedState.photo2Id
-                    ) {
-                        await whatsappService.sendMessage(
-                            phoneNumber,
-                            "📸 ¿Aún estás ahí? Envíanos la segunda foto para continuar con tu diagnóstico."
-                        );
-                    }
-                }, 30000); // 5 minutos
-
-                setTimeout(async () => {
-                    const updatedState = stateManager.getState(phoneNumber);
-                    if (updatedState && updatedState.step === "photo2" && !updatedState.photo2Id) {
-                        await whatsappService.sendMessage(phoneNumber, "⏳ Hemos cancelado el proceso por inactividad. Si deseas intentarlo de nuevo, envía 'diagnóstico'.");
-                        stateManager.setState(phoneNumber, { step: "none" }); // Restablecer el estado
-                    }
-                }, 900000); // 15 minutos
-
-
             } else if (state.step === "photo2") {
                 state.photo2Id = imageId;
-
-                // Verificar si el pago ya fue recibido
-                if (state.paymentStatus === "verified") {
-                    console.log(
-                        `🔥 Pago ya verificado. Iniciando análisis preliminar para ${phoneNumber}...`
-                    );
-                    await this.preliminaryAnalysis(
-                        phoneNumber,
-                        state.photo1Id,
-                        state.photo2Id
-                    );
-                } else {
-                    console.log(
-                        `⏳ Esperando pago para ${phoneNumber} antes de proceder con el análisis.`
-                    );
-                }
+    
+                //Ofrecer análisis completo
+                await this.offerFullAnalysis(phoneNumber);
             }
-
-            console.log(`📸 Estado actualizado para ${phoneNumber}:`, state);
+    
+            console.log(` Estado actualizado para ${phoneNumber}:`, state);
         } catch (error) {
             console.error("❌ Error en handleImageMessage:", error);
             await whatsappService.sendMessage(
@@ -186,54 +134,34 @@ class MessageHandler {
             );
         }
     }
+    
+    async handlePaymentVerification(phoneNumber) {
+        try {
+            const state = stateManager.getState(phoneNumber);
+            if (state && state.paymentStatus === "verified") {
+                console.log(
+                    ` Pago verificado. Iniciando análisis completo para ${phoneNumber}...`
+                );
+                await this.processAnalysisAndSendResults(phoneNumber);
+            } else {
+                console.log(
+                    `⏳ Esperando pago para ${phoneNumber} antes de proceder con el análisis completo.`
+                );
+            }
+        } catch (error) {
+            console.error("❌ Error en handlePaymentVerification:", error);
+            await whatsappService.sendMessage(
+                phoneNumber,
+                "Ocurrió un error al verificar el pago."
+            );
+        }
+    }
 
     async obtenerStatusImagen() {
         return true;
     }
 
-    // --- Analysis --
-
-    // Ejemplo de reutilización de imágenes
-    async preliminaryAnalysis(to, photo1Id, photo2Id) {
-        try {
-            console.log(
-                `🔍 Descargando imágenes para análisis preliminar de ${to}...`
-            );
-
-            const [photo1Path, photo2Path] = await Promise.all([
-                whatsappService.downloadMedia(photo1Id),
-                whatsappService.downloadMedia(photo2Id),
-            ]);
-
-            if (!photo1Path || !photo2Path) {
-                console.error("⚠️ No se pudieron descargar las imágenes.");
-                return;
-            }
-
-            console.log(`📸 Imágenes descargadas: ${photo1Path}, ${photo2Path}`);
-
-            const preliminaryResponse = await geminiService.preliminaryAnalysis(
-                photo1Path,
-                photo2Path,
-                prompts.PRELIMINARY_ANALYSIS
-            );
-
-            console.log(
-                `📨 Enviando análisis preliminar a ${to}:`,
-                preliminaryResponse
-            );
-            await whatsappService.sendMessage(to, preliminaryResponse);
-
-            // Ofrecer análisis completo
-            await this.offerFullAnalysis(to);
-        } catch (error) {
-            console.error("❌ Error en preliminaryAnalysis:", error);
-            await this.sendErrorMessage(
-                to,
-                "Ocurrió un error al analizar las imágenes."
-            );
-        }
-    }
+    // --- Analysis and Results ---
 
     // En processAnalysisAndSendResults
     async processAnalysisAndSendResults(to) {
@@ -317,15 +245,6 @@ class MessageHandler {
         }
     }
 
-    async offerProducts(to) {
-        const message =
-            "¿Deseas ver productos que te ayuden a mejorar la salud de tu cuero cabelludo y cabello?";
-        const buttons = [
-            { type: "reply", reply: { id: "products_yes", title: "Sí" } },
-            { type: "reply", reply: { id: "products_no", title: "No" } },
-        ];
-        await whatsappService.sendInteractiveButtons(to, message, buttons);
-    }
 
     // --- Menu Options Handling ---
 
@@ -373,19 +292,19 @@ class MessageHandler {
                         messages.PRIMERA_FOTO_MESSAGE
                     );
                     break;
-
                 case "cita":
                     await whatsappService.sendMessage(to, messages.AGENDA_MESSAGE);
                     await this.sendContact(to);
+                    await this.sendHelpButtons(to);
                     break;
                 case "productos":
                     await whatsappService.sendMessage(to, messages.PRODUCTOS_MESSAGE);
-                    await this.sendHelpButtons(to); // Reutilización de función
+                    await this.sendHelpButtons(to);
                     break;
                 case "ubicacion":
                     await this.sendLocationInfo(to); // Reutilización de función
                     await whatsappService.sendMessage(to, messages.HORARIOS_MESSAGE);
-                    await this.sendHelpButtons(to); // Reutilización de función
+                    await this.sendHelpButtons(to);
                     break;
                 case "terminar":
                     await whatsappService.sendMessage(to, messages.DESPEDIDA_MESSAGE);
@@ -393,13 +312,6 @@ class MessageHandler {
                 case "menu":
                     await this.sendWelcomeMenu(to);
                     break;
-                case "nuevo_analisis": // Manejar la opción "Realizar nuevo análisis"
-                    await whatsappService.sendMessage(
-                        to,
-                        "Vamos a realizar un nuevo análisis. Por favor, envía la primera foto de tu cuero cabelludo."
-                    );
-                    stateManager.deleteState(to);
-                break;
                 default:
                     await this.sendErrorMessage(
                         to,
@@ -440,46 +352,42 @@ class MessageHandler {
     // --- Helper Functions ---
 
     isGreeting(message) {
-        const greetingRegex = /^(hola|hello|hi|buenas|buen día|qué tal|saludos)/i;
-        return greetingRegex.test(message);
+        const greetingRegex = /^(hola|hello|hi|hey|buenas|buen[oa]s?\s?(d[ií]a|d[ií]as|tarde|tardes|noche|noches)|qué tal|saludos|cómo estás|qué onda)/i;
+        return greetingRegex.test(message.toLowerCase().trim());
     }
-
+    
     getSenderName(senderInfo) {
         return senderInfo.profile?.name || senderInfo.wa_id;
     }
 
     async sendContact(to) {
-        const contact = {
-            addresses: [
-                {
-                    street: "Cra 31 #50 - 21",
-                    city: "Bucaramanga",
-                    state: "",
-                    zip: "",
-                    country: "",
-                    country_code: "",
-                    type: "WORK",
-                },
-            ],
-            emails: [{ email: "tecniclaud@gmail.com", type: "WORK" }],
-            name: {
-                formatted_name: "Tricóloga  Claudia Moreno",
-                first_name: "Claudia Moreno",
-                last_name: "Moreno",
-                middle_name: "",
-                suffix: "",
-                prefix: "",
-            },
-            org: {
-                company: "Claudia Moreno",
-                department: "Atención al Cliente",
-                title: "Representante",
-            },
-            phones: [{ phone: "+573224457046", wa_id: "573224457046", type: "WORK" }],
-            urls: [{ url: "https://claudiamoreno.webnode.com.co", type: "WORK" }],
-        };
+        const contact = this.getContactInfo();
         await whatsappService.sendContactMessage(to, contact);
     }
+    
+    getContactInfo() {
+        return {
+            addresses: [{ 
+                street: "Cra 31 #50 - 21", 
+                city: "Bucaramanga", 
+                type: "WORK" 
+            }],
+            emails: [{ email: "tecniclaud@gmail.com", type: "WORK" }],
+            name: {
+                formatted_name: "Tricóloga Claudia Moreno",
+                first_name: "Claudia",
+                last_name: "Moreno"
+            },
+            org: { 
+                company: "Claudia Moreno", 
+                department: "Atención al Cliente", 
+                title: "Representante" 
+            },
+            phones: [{ phone: "+573224457046", wa_id: "573224457046", type: "WORK" }],
+            urls: [{ url: "https://claudiamoreno.webnode.com.co", type: "WORK" }]
+        };
+    }
+    
 
     async sendWelcomeMenu(to) {
         const sections = [
@@ -524,7 +432,7 @@ class MessageHandler {
     async moreButtons(to) {
         await whatsappService.sendInteractiveButtons(
             to,
-            "Puedes ver más opciones aquí:",
+            "Te puede interesar:",
             [
                 { type: "reply", reply: { id: "cita", title: "Agendar Cita 💇🏻‍♀️" } },
                 {

@@ -12,6 +12,8 @@ export default {
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     BOLD_API_KEY:process.env.BOLD_API_KEY,
     WEBHOOK_BOLD:process.env.WEBHOOK_BOLD,
+    DOMINIO_URL:process.env.DOMINIO_URL,
     PAGO_BOLD:process.env.PAGO_BOLD,
     BOLD_API_LINK_URL: process.env.BOLD_API_LINK_URL
 }
+
