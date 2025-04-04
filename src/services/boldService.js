@@ -17,7 +17,7 @@ class BoldService {
                 amount: {
                     currency: currency || "COP",
                     tip_amount: 0,
-                    total_amount: amount || 49900,
+                    total_amount: amount || 5000,
                 },
                 description: orderId || "Diagnóstico Capilar",
                 expiration_date: expiration_date || (Date.now() * 1e6) + (10 * 60 * 1e9),
