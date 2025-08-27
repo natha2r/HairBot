@@ -16,4 +16,3 @@ export default {
     PAGO_BOLD:process.env.PAGO_BOLD,
     BOLD_API_LINK_URL: process.env.BOLD_API_LINK_URL
 }
-

@@ -54,7 +54,7 @@ const prompts = {
       - *Alfaparf Semi di Lino Rebalance Shampoo:* Regula la producción de sebo y calma la irritación.  
       - *Alterego Urban Proof Leave-in:* Protector térmico con barrera antipolución para evitar la deshidratación.  
     
-    **📌 Nota:** Si se detectan signos avanzados de disfunción capilar, enfatiza la importancia de una consulta con la **Tricóloga Claudia Moreno**, sin utilizar términos como "revisión preliminar" o "se necesita más información".  
+    **📌 Nota:** Si se detectan signos avanzados de disfunción capilar, enfatiza la importancia de una consulta con la **Asesora Cosmética Claudia Moreno**, sin utilizar términos como "revisión preliminar" o "se necesita más información".  
   `,
 
   // Análisis preliminar breve

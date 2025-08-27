@@ -8,6 +8,12 @@ import fs from "fs";
 import cron from "node-cron";
 import config from "../config/env.js";
 
+// Nueva función asigandada para verificar si el timestamp está dentro de las últimas 24 horas
+function isWithin24h(timestamp) {
+    return Date.now() - timestamp < 24 * 60 * 60 * 1000;
+}
+
+
 class MessageHandler {
     constructor() {
         this.consultationState = {};
@@ -19,6 +25,7 @@ class MessageHandler {
         }
 
     // --- Message Handling ---
+
 
     async handleIncomingMessage(message, senderInfo) {
         try {
@@ -161,90 +168,176 @@ class MessageHandler {
     async obtenerStatusImagen() {
         return true;
     }
+    // -------------------------------------------------------------------------------------------------------------------------------------------------
 
     // --- Analysis and Results ---
 
-    // En processAnalysisAndSendResults
+    // En processAnalysisAndSendResults Versión Antigua
+    // async processAnalysisAndSendResults(to) {
+    //     console.log(`🚀 Ejecutando processAnalysisAndSendResults para ${to}`);
+    //     try {
+    //         const state = stateManager.getState(to);
+
+    //         console.log("Estado actual:", {
+    //             paymentStatus: state.paymentStatus,
+    //             photo1Id: state.photo1Id,
+    //             photo2Id: state.photo2Id,
+    //         });
+    //         if (
+    //             !state ||
+    //             state.paymentStatus !== "verified" ||
+    //             !state.photo1Id ||
+    //             !state.photo2Id
+    //         ) {
+    //             await this.sendErrorMessage(
+    //                 to,
+    //                 "El pago o las imágenes aún no están listos."
+    //             );
+    //             return;
+    //         }
+
+    //         console.log("id foto 1: ", state.photo1Id);
+    //         console.log("id foto 2: ", state.photo2Id);
+
+    //         // Descargar las imágenes
+    //         const [photo1Path, photo2Path] = await Promise.all([
+    //             whatsappService.downloadMedia(state.photo1Id),
+    //             whatsappService.downloadMedia(state.photo2Id),
+    //         ]);
+
+    //         if (!photo1Path || !photo2Path) {
+    //             console.error(
+    //                 `⚠️ Error: No se pudieron descargar las imágenes. photo1Id: ${state.photo1Id}, photo2Id: ${state.photo2Id}`
+    //             );
+    //             await this.sendErrorMessage(
+    //                 to,
+    //                 "No se pudieron descargar las imágenes para el análisis."
+    //             );
+    //             return;
+    //         }
+
+    //         // Realizar el análisis completo
+    //         const fullAnalysis = await geminiService.fullAnalysis(
+    //             photo1Path,
+    //             photo2Path,
+    //             prompts.FULL_ANALYSIS
+    //         );
+
+    //         await whatsappService.sendMessage(to, fullAnalysis);
+
+    //         // Guardar el análisis en el estado para usarlo luego
+    //         state.fullAnalysis = fullAnalysis;
+    //         stateManager.setState(to, state);
+
+    //         await this.moreButtons(to);
+
+    //         // ✅ Eliminar imágenes después del análisis
+    //         try {
+    //             await Promise.all([
+    //                 fs.promises.unlink(photo1Path),
+    //                 fs.promises.unlink(photo2Path)
+    //             ]);
+    //             console.log("🗑️ Imágenes eliminadas correctamente.");
+    //         } catch (err) {
+    //             console.error("❌ Error al eliminar las imágenes:", err);
+    //         }
+
+    //         // ✅ Limpiar el estado después de completar el análisis
+    //         stateManager.deleteState(to);
+
+    //     } catch (error) {
+    //         console.error("Error en processAnalysisAndSendResults:", error);
+    //         await this.sendErrorMessage(
+    //             to,
+    //             `Ocurrió un error al procesar el análisis completo: ${error}`
+    //         );
+    //     }
+    // }
+
+     // -------------------------------------------------------------------------------------------------------------------------------------------------
+
+    // Process Analysis and Send Results VERSION MEJORADA
     async processAnalysisAndSendResults(to) {
-        console.log(`🚀 Ejecutando processAnalysisAndSendResults para ${to}`);
-        try {
-            const state = stateManager.getState(to);
+    console.log(`🚀 Ejecutando processAnalysisAndSendResults para ${to}`);
+    try {
+        const state = stateManager.getState(to);
 
-            console.log("Estado actual:", {
-                paymentStatus: state.paymentStatus,
-                photo1Id: state.photo1Id,
-                photo2Id: state.photo2Id,
-            });
-            if (
-                !state ||
-                state.paymentStatus !== "verified" ||
-                !state.photo1Id ||
-                !state.photo2Id
-            ) {
-                await this.sendErrorMessage(
-                    to,
-                    "El pago o las imágenes aún no están listos."
-                );
-                return;
-            }
-
-            console.log("id foto 1: ", state.photo1Id);
-            console.log("id foto 2: ", state.photo2Id);
-
-            // Descargar las imágenes
-            const [photo1Path, photo2Path] = await Promise.all([
-                whatsappService.downloadMedia(state.photo1Id),
-                whatsappService.downloadMedia(state.photo2Id),
-            ]);
-
-            if (!photo1Path || !photo2Path) {
-                console.error(
-                    `⚠️ Error: No se pudieron descargar las imágenes. photo1Id: ${state.photo1Id}, photo2Id: ${state.photo2Id}`
-                );
-                await this.sendErrorMessage(
-                    to,
-                    "No se pudieron descargar las imágenes para el análisis."
-                );
-                return;
-            }
-
-            // Realizar el análisis completo
-            const fullAnalysis = await geminiService.fullAnalysis(
-                photo1Path,
-                photo2Path,
-                prompts.FULL_ANALYSIS
-            );
-
-            await whatsappService.sendMessage(to, fullAnalysis);
-
-            // Guardar el análisis en el estado para usarlo luego
-            state.fullAnalysis = fullAnalysis;
-            stateManager.setState(to, state);
-
-            await this.moreButtons(to);
-
-            // ✅ Eliminar imágenes después del análisis
-            try {
-                await Promise.all([
-                    fs.promises.unlink(photo1Path),
-                    fs.promises.unlink(photo2Path)
-                ]);
-                console.log("🗑️ Imágenes eliminadas correctamente.");
-            } catch (err) {
-                console.error("❌ Error al eliminar las imágenes:", err);
-            }
-
-            // ✅ Limpiar el estado después de completar el análisis
-            stateManager.deleteState(to);
-
-        } catch (error) {
-            console.error("Error en processAnalysisAndSendResults:", error);
+        if (
+            !state ||
+            state.paymentStatus !== "verified" ||
+            !state.photo1Id ||
+            !state.photo2Id
+        ) {
             await this.sendErrorMessage(
                 to,
-                `Ocurrió un error al procesar el análisis completo: ${error}`
+                "El pago o las imágenes aún no están listos."
             );
+            return;
         }
+
+        console.log("id foto 1: ", state.photo1Id);
+        console.log("id foto 2: ", state.photo2Id);
+
+        // Descargar las imágenes
+        const [photo1Path, photo2Path] = await Promise.all([
+            whatsappService.downloadMedia(state.photo1Id),
+            whatsappService.downloadMedia(state.photo2Id),
+        ]);
+
+        if (!photo1Path || !photo2Path) {
+            await this.sendErrorMessage(
+                to,
+                "No se pudieron descargar las imágenes para el análisis."
+            );
+            return;
+        }
+
+        // Realizar el análisis completo con IA
+        const fullAnalysis = await geminiService.fullAnalysis(
+            photo1Path,
+            photo2Path,
+            prompts.FULL_ANALYSIS
+        );
+
+        // Verificar si está dentro de la ventana de 24h
+        const timestamp = state.timestamp || Date.now();
+
+        if (isWithin24h(timestamp)) {
+            await whatsappService.sendMessage(to, fullAnalysis);
+            await this.moreButtons(to);
+            stateManager.deleteState(to); // Limpiar estado completo
+        } else {
+            // Fuera de la ventana → enviar plantilla aprobada
+            await whatsappService.sendTemplateMessage(to, 'payment_analysis_ready', {
+                body_parameters: [], // O por ejemplo: ["Claudia"] si tu plantilla tiene {{1}}
+            });
+
+            // Guardar el análisis en el estado para enviarlo si el usuario responde
+            state.fullAnalysis = fullAnalysis;
+            stateManager.setState(to, state);
+            console.log(`📦 Análisis guardado en estado para ${to}, esperando confirmación del usuario.`);
+        }
+
+        // Eliminar imágenes después del análisis (en ambos casos)
+        try {
+            await Promise.all([
+                fs.promises.unlink(photo1Path),
+                fs.promises.unlink(photo2Path)
+            ]);
+            console.log("🗑️ Imágenes eliminadas correctamente.");
+        } catch (err) {
+            console.error("❌ Error al eliminar las imágenes:", err);
+        }
+
+    } catch (error) {
+        console.error("Error en processAnalysisAndSendResults:", error);
+        await this.sendErrorMessage(
+            to,
+            `Ocurrió un error al procesar el análisis completo: ${error}`
+        );
     }
+}
+
 
 
     // --- Menu Options Handling ---
@@ -375,17 +468,17 @@ class MessageHandler {
             }],
             emails: [{ email: "tecniclaud@gmail.com", type: "WORK" }],
             name: {
-                formatted_name: "Tricóloga Claudia Moreno",
+                formatted_name: "Asesora Cosmética",
                 first_name: "Claudia",
                 last_name: "Moreno"
             },
             org: { 
                 company: "Claudia Moreno", 
                 department: "Atención al Cliente", 
-                title: "Representante" 
+                title: "Técnico Colorista"  
             },
             phones: [{ phone: "+573224457046", wa_id: "573224457046", type: "WORK" }],
-            urls: [{ url: "https://claudiamoreno.webnode.com.co", type: "WORK" }]
+            urls: [{ url: "https://diagnosticosclaudiamoreno.com/", type: "WORK" }]
         };
     }
     

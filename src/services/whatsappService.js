@@ -177,6 +177,29 @@ class WhatsAppService {
             throw error;
         }
     }
+            //Plantilla para recibir pago
+        async sendTemplateMessage(to, templateName, options = {}) {
+        const data = {
+            messaging_product: "whatsapp",
+            to,
+            type: "template",
+            template: {
+                name: templateName,
+                language: {
+                    code: options.language?.code || "es" // idioma por defecto: español
+                },
+                components: options.components || []    // parámetros dinámicos si aplica
+            }
+        };
+
+        try {
+            await sendToWhatsApp(data);
+        } catch (error) {
+            console.error("❌ Error al enviar plantilla:", error.response?.data || error);
+            throw error;
+        }
+    }
+
 }
 
 export default new WhatsAppService();
