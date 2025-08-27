@@ -308,8 +308,14 @@ class MessageHandler {
             stateManager.deleteState(to); // Limpiar estado completo
         } else {
             // Fuera de la ventana → enviar plantilla aprobada
-            await whatsappService.sendTemplateMessage(to, 'payment_analysis_ready', {
-                body_parameters: [], // O por ejemplo: ["Claudia"] si tu plantilla tiene {{1}}
+            await whatsappService.sendTemplateMessage(to, "payment_analysis_ready", {
+                language: { code: "es" },
+                components: [
+                    {
+                        type: "body",
+                        parameters: [] // si tu plantilla tiene {{1}}, {{2}}, pasas valores aquí
+                    }
+                ]
             });
 
             // Guardar el análisis en el estado para enviarlo si el usuario responde
@@ -347,7 +353,15 @@ class MessageHandler {
             console.log("Handling menu option:", { to, option });
             switch (option) {
                 case "full_analysis_yes":
-                    await paymentController.generatePaymentLink(to);
+                    case "analysis_confirm_yes":
+                    const currentState = stateManager.getState(to);
+                    if (currentState?.fullAnalysis) {
+                        await whatsappService.sendMessage(to, currentState.fullAnalysis);
+                        await this.moreButtons(to);
+                        stateManager.deleteState(to);
+                    } else {
+                        await whatsappService.sendMessage(to, "No tienes ningún análisis pendiente.");
+                    }
                     break;
                 case "full_analysis_no":
                     await whatsappService.sendMessage(to, "¡Gracias por tu consulta 😊!, ¿En qué más puedo ayudarte?");
@@ -372,7 +386,7 @@ class MessageHandler {
 
                 case "confirm_diagnostico":
                     stateManager.setState(to, {
-                        paymentStatus: "verified", // O el estado de pago inicial que necesites
+                        paymentStatus: "pending", // O el estado de pago inicial que necesites
                         images: [],
                         step: "photo1",
                         photo1Id: null,
@@ -405,6 +419,20 @@ class MessageHandler {
                     break;
                 case "menu":
                     await this.sendWelcomeMenu(to);
+                    break;
+
+                case "analysis_confirm_yes":
+                    const state = stateManager.getState(to);
+                    if (state?.fullAnalysisPending) {
+                        console.log(`📦 Usuario ${to} confirmó análisis pendiente`);
+                        await this.processAnalysisAndSendResults(to);
+                    
+                        // Limpiar bandera
+                        state.fullAnalysisPending = false;
+                        stateManager.setState(to, state);
+                    } else {
+                        await whatsappService.sendMessage(to, "No tienes ningún análisis pendiente.");
+                    }
                     break;
                 default:
                     await this.sendErrorMessage(
